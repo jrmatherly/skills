@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Explore the codebase to answer "how does X work?" questions. Produce architectural explanations at the level of a senior engineer onboarding onto a subsystem, enough to build a working mental model, not so much that it reads like annotated source code.
 
-Each spawn below names a role line in the `jstack-models.md` rule and a default. Set `model` to that line's value, or to the default if the rule or the line is missing. Leave `model` unset when the value is `auto` or `inherit-parent`. If the Agent tool rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message.
+Each spawn below names a role line in the `jstack-models.md` rule and a default. Set `model` to that line's value, or to the default if the rule or the line is missing. Leave `model` unset when the value is `inherit`. A `codex` value runs that seat through Codex instead of a subagent (see the **setup-jstack** skill, "Codex seats"); if `command -v codex` fails, use `opus` and say so. If the Agent tool rejects a value, use the default and say so.
 
 ## Step 1. Assess Complexity
 
@@ -25,27 +25,27 @@ Decompose the question into 2 to 4 exploration angles, each a distinct slice of 
 
 - `subagent_type`: `general-purpose`
 - `model`: the `how explorer` line, default `grok-4.7-xhigh-fast`
-- `readonly`: `true`
+- Brief it as read-only: it explores and explains, and edits nothing.
 
 Each explorer gets the prompt in `references/explorer-prompt.md` with its angle filled in. Then go to Step 3.
 
 ## Step 2b. Direct Explain (simple questions)
 
-Spawn one Task subagent that explores and explains in one pass:
+Spawn one subagent that explores and explains in one pass:
 
 - `subagent_type`: `general-purpose`
-- `model`: the `how explainer` line, default `claude-opus-5-5-max`
-- `readonly`: `true`
+- `model`: the `how explainer` line, default `opus`
+- Brief it as read-only: it explores and explains, and edits nothing.
 
 Build its prompt from `references/explainer-prompt.md` without the explorer-findings section. Go to Step 4.
 
 ## Step 3. Synthesize (complex questions only)
 
-Once all explorers have returned, spawn one Task subagent to synthesize their findings into one explanation:
+Once all explorers have returned, spawn one subagent to synthesize their findings into one explanation:
 
 - `subagent_type`: `general-purpose`
-- `model`: the `how explainer` line, default `claude-opus-5-5-max`
-- `readonly`: `true`
+- `model`: the `how explainer` line, default `opus`
+- Brief it as read-only: it explores and explains, and edits nothing.
 
 Build its prompt from `references/explainer-prompt.md` with every explorer's findings filled in.
 

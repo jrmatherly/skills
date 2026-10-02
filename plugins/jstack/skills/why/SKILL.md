@@ -10,7 +10,7 @@ Investigate the motivation and intent behind code.
 
 Companion to the `how` skill. `how` answers what the code does and how it works. `why` answers what forces led to its shape.
 
-Each spawn below names a role line in the `jstack-models.md` rule and a default. Set `model` to that line's value, or to the default if the rule or the line is missing. Leave `model` unset when the value is `auto` or `inherit-parent`. If the Agent tool rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message.
+Each spawn below names a role line in the `jstack-models.md` rule and a default. Set `model` to that line's value, or to the default if the rule or the line is missing. Leave `model` unset when the value is `inherit`. A `codex` value runs that seat through Codex instead of a subagent (see the **setup-jstack** skill, "Codex seats"); if `command -v codex` fails, use `opus` and say so. If the Agent tool rejects a value, use the default and say so.
 
 ## Operating Posture
 
@@ -82,7 +82,7 @@ Launch all matching investigators in a single message so they run concurrently. 
 Subagent config (each):
 - `subagent_type`: `general-purpose`
 - `model`: the `why investigators` line, default `grok-4.7-xhigh-fast`
-- `readonly`: `false` (agent mode). **Do not use readonly/Ask mode.** It strips MCP access, which disables MCP-backed investigators entirely. Investigators still shouldn't write anything.
+- Brief it as read-only: investigators use MCP tools and read, and write nothing.
 
 Each investigator gets:
 1. The base prompt from `references/investigator-prompt.md`
@@ -125,8 +125,8 @@ If your scope assessment suggests a single-commit trivial target where the PR de
 Spawn one synthesizer subagent:
 
 - `subagent_type`: `general-purpose`
-- `model`: the `why synthesizer` line, default `claude-opus-5-5-max`
-- `readonly`: `false` (agent mode). The synthesizer's quality check spot-verifies citations, which can require MCP access. Readonly/Ask mode strips MCPs and defeats that.
+- `model`: the `why synthesizer` line, default `opus`
+- The synthesizer may use MCP tools to spot-verify citations.
 
 The synthesizer gets:
 1. The investigator findings, including any null results and any categories skipped with justification
