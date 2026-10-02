@@ -16,10 +16,11 @@ Invoke when the user says "reflect" or "/reflect". Skip when the conversation is
 
 ### 1. Locate the active transcript
 
-The parent finds its own transcript file before fanning out. The system prompt names the active workspace's `agent-transcripts/` directory. Use that path. Do not glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects.
+The parent finds its own transcript file before fanning out: `~/.claude/projects/<slug>/${CLAUDE_SESSION_ID}.jsonl` in this project's Claude Code transcripts: `~/.claude/projects/<slug>/<session-id>.jsonl`, with subagents under `<slug>/<session-id>/subagents/agent-*.jsonl`. `<slug>` is the project's real path (`pwd -P`) with every character other than a letter or digit turned into `-` (`/Users/you/proj` → `-Users-you-proj`). Each line is a JSON object; chat messages are the lines whose `type` is `user` or `assistant` (read them with `jq`). Don't glob across `~/.claude/projects/*/`: that crosses project boundaries and reads private chats from unrelated projects.
 
 ```bash
-ls -t <agent-transcripts>/*.jsonl <agent-transcripts>/*/*.jsonl <agent-transcripts>/*/subagents/*.jsonl 2>/dev/null | head -10
+slug=$(pwd -P | sed 's/[^A-Za-z0-9]/-/g')
+ls -t ~/.claude/projects/$slug/*.jsonl ~/.claude/projects/$slug/*/subagents/*.jsonl 2>/dev/null | head -10
 ```
 
 Three transcript layouts: legacy flat (`<id>.jsonl`), current nested (`<id>/<id>.jsonl`), and subagent (`<parent>/subagents/<child>.jsonl`).

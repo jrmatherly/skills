@@ -91,6 +91,12 @@ if [ "$apply_patches" = true ] && [ "${JSTACK_NO_CHECK:-}" != 1 ]; then
   (cd "$scripts" && bun install --frozen-lockfile > /dev/null && bun test orch watch-pr > /dev/null) \
     || die "test: bun test failed in skills/j-mode/scripts"
   rm -rf "$scripts/node_modules"
+  # Regression tests for files the patches change (each takes the stage dir)
+  for test in "$root"/jstack/tests/*.sh; do
+    [ -e "$test" ] || continue
+    bash "$test" "$stage/skills/j-mode/scripts/worktree-audit.sh" > /dev/null \
+      || die "test: ${test##*/} failed"
+  done
 fi
 
 rm -rf "$out" && mkdir -p "$(dirname "$out")" && mv "$stage" "$out"

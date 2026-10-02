@@ -54,7 +54,7 @@ Commit it only when the work is ambitious enough that a reviewer needs the trail
 
 ## Audit the log against the transcript
 
-At the end of the run, before handing back, check the log told the truth. Read this run's transcript under the active workspace's `agent-transcripts/` directory (the system prompt names the path). Don't glob across `~/.cursor/projects/*/`. That reads unrelated private chats. Walk this run's rows against what actually happened. Each stretch of them begins at one of this run's `start` rows, or at the first row if this run created the log, and ends at the next `start` row of another run:
+At the end of the run, before handing back, check the log told the truth. Read this run's transcript, `~/.claude/projects/<slug>/${CLAUDE_SESSION_ID}.jsonl` in this project's Claude Code transcripts: `~/.claude/projects/<slug>/<session-id>.jsonl`, with subagents under `<slug>/<session-id>/subagents/agent-*.jsonl`. `<slug>` is the project's real path (`pwd -P`) with every character other than a letter or digit turned into `-` (`/Users/you/proj` → `-Users-you-proj`). Each line is a JSON object; chat messages are the lines whose `type` is `user` or `assistant` (read them with `jq`). Don't glob across `~/.claude/projects/*/`: that crosses project boundaries and reads private chats from unrelated projects. Walk this run's rows against what actually happened. Each stretch of them begins at one of this run's `start` rows, or at the first row if this run created the log, and ends at the next `start` row of another run:
 
 - Check that every row maps to a real decision or action.
 - Check that each row's evidence resolves and shows what the row claims.
