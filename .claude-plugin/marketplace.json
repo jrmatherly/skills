@@ -1,6 +1,9 @@
 {
   "name": "jrmatherly-skills",
-  "owner": { "name": "Jason Matherly" },
+  "description": "Jason Matherly's private Claude Code plugins",
+  "owner": {
+    "name": "Jason Matherly"
+  },
   "plugins": [
     {
       "name": "jstack",
