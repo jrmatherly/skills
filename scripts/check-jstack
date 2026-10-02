@@ -1,5 +1,37 @@
 #!/bin/bash
-# Validate a generated jstack tree (default plugins/jstack)
-set -euo pipefail
+# Validate a generated jstack tree (default plugins/jstack): no upstream names
+# or Cursor-only references, valid frontmatter, live links, and every skill a
+# skill names actually exists (most are disable-model-invocation, so a dangling
+# name can't fall back to the Skill tool).
+set -uo pipefail
 dir="${1:-$(cd "$(dirname "$0")/.." && pwd -P)/plugins/jstack}"
-[ -f "$dir/.claude-plugin/plugin.json" ] || { echo "check-jstack: no plugin.json in $dir" >&2; exit 1; }
+fail=0
+bad() { echo "$*" >&2; fail=1; }
+
+forbidden='poteto|pstack|lauren|~/\.cursor|\.cursor/|\bCursor\b|AskQuestion\b|generalPurpose|cursor-team-kit|\bdeslop\b|control-ui|control-cli|\bcreate-skill\b|agent-transcripts|environment: "cloud"|\bGrok\b|gpt-5\.|claude-opus-[0-9-]+-(max|xhigh|high|medium)|\.mdc\b|is_background|\bTask tool\b|^mode: true|^icon:|^reminder:'
+while IFS= read -r hit; do bad "$hit: upstream/Cursor reference"; done \
+  < <(grep -rnEI --exclude=LICENSE --exclude=bun.lock --exclude=plugin.json "$forbidden" "$dir")
+
+for f in "$dir"/skills/*/SKILL.md; do
+  d="$(basename "$(dirname "$f")")"
+  name="$(awk 'NR>1 && /^---$/{exit} /^name: /{sub(/^name: */,""); print; exit}' "$f")"
+  [ "$name" = "$d" ] || bad "$f: name '$name' != directory '$d'"
+  grep -q '^description: ' "$f" || bad "$f: no description"
+done
+
+while IFS=: read -r f _ m; do
+  t="${m#*(}"; t="${t%)}"
+  case $t in */* | *.*) ;; *) continue ;; esac # placeholders like (url) in prompt templates
+  [ -e "$(dirname "$f")/$t" ] || bad "$f: broken link $t"
+done < <(grep -rnoE --include='*.md' '\]\([^):#]+\)' "$dir")
+
+# **name** / `name` references to skills must exist
+skills=$(ls "$dir/skills")
+while IFS=: read -r f _ ref; do
+  ref="${ref//[\*\`]/}"
+  grep -qx "$ref" <<< "$skills" || bad "$f: references missing skill '$ref'"
+done < <(grep -rnoE --include='*.md' '\*\*(principle-[a-z-]+|how|why|architect|arena|swarm|interrogate|unslop|technical-writing|no-comments|show-me-your-work|tdd|recall|reflect|teach|figure-it-out|blast-radius)\*\*' "$dir")
+
+grep -q 'Copyright (c) 2026 Lauren Tan' "$dir/LICENSE" || bad "LICENSE: upstream notice missing"
+claude plugin validate "$dir" > /dev/null 2>&1 || bad "claude plugin validate $dir failed"
+exit $fail

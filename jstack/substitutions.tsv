@@ -1,1 +1,22 @@
 # from	to
+Poteto Mode	J Mode
+Poteto mode	J mode
+Poteto subagent	J subagent
+poteto-mode-tools	j-mode-tools
+poteto-mode	j-mode
+poteto-agent	j-agent
+poteto's	Jason's
+setup-pstack	setup-jstack
+~/.cursor/rules/pstack-models.mdc	~/.claude/rules/jstack-models.md
+pstack-models.mdc	jstack-models.md
+@cursor-skill/	@jstack/
+pstack	jstack
+subagent_type: generalPurpose	subagent_type: general-purpose
+generalPurpose	general-purpose
+AskQuestion	AskUserQuestion
+the `Task` tool	the `Agent` tool
+a `Task` subagent	an `Agent` subagent
+Task tool	Agent tool
+is_background: true	background: true
+"poteto/	"j/
+.cursor/skills/	.claude/skills/

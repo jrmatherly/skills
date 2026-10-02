@@ -297,7 +297,7 @@ describe("context and stack discovery", () => {
       },
       {
         number: parsePrNumber(43),
-        headRefName: "upstack",
+        headRefName: "ujstack",
         baseRefName: "feature",
       },
     ]);
