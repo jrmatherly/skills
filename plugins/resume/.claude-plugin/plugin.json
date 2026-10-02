@@ -1,0 +1,6 @@
+{
+  "name": "resume",
+  "description": "Resume, job search and career skills: ATS checks, bullets, tailoring, cover letters, LinkedIn, interview prep, offers and negotiation. Fork of ResumeSkills (MIT).",
+  "author": { "name": "Jason Matherly" },
+  "license": "MIT"
+}

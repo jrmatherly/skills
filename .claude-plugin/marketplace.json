@@ -9,6 +9,11 @@
       "name": "jstack",
       "description": "Jason's agent workflows (fork of pstack by Lauren Tan, MIT)",
       "source": "./plugins/jstack"
+    },
+    {
+      "name": "resume",
+      "description": "Resume, job search and career skills (fork of ResumeSkills, MIT)",
+      "source": "./plugins/resume"
     }
   ]
 }

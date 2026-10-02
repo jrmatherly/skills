@@ -18,12 +18,41 @@ installs both and whose `agents/instructions.md` refers to these skills.
 | Plugin | Use it for |
 | --- | --- |
 | [`jstack`](plugins/jstack) | Jason's agent workflows: the `j-mode` router and its playbooks, design and review panels (`architect`, `arena`, `interrogate`, `swarm`), `how`/`why` investigations, verification, and 23 `principle-*` skills. Run `/jstack:j-mode`. |
+| [`resume`](plugins/resume) | Resumes and the job search: ATS checks, bullets and metrics, tailoring to a posting, cover letters, LinkedIn, interview prep, offers and negotiation |
 
 jstack's skills set `disable-model-invocation`, so they stay out of Claude's
 automatic skill choice: run them as `/jstack:<name>`, and `j-mode` reads the
 others by path. `/jstack:setup-jstack` picks the model per role (Claude tiers,
 plus a Codex reviewer when `codex` is installed). Its `j-mode` scripts need
 [Bun](https://bun.com).
+
+`resume` holds 22 skills for resumes and the job search around them. Claude
+picks them from the request, or run one as `/resume:<name>`:
+
+| Area | Skills |
+| --- | --- |
+| Resume | `ats-optimizer`, `formatter`, `bullet-writer`, `quantifier`, `section-builder`, `tailor`, `version-manager` |
+| By role | `tech-resume-optimizer`, `executive-resume-writer`, `academic-cv-builder`, `creative-portfolio-resume`, `career-changer-translator` |
+| Applications | `job-description-analyzer`, `cover-letter-generator`, `application-form-filler`, `cold-email-writer`, `linkedin-profile-optimizer`, `portfolio-case-study-writer`, `reference-list-builder` |
+| Interviews and offers | `interview-prep-generator`, `salary-negotiation-prep`, `offer-comparison-analyzer` |
+
+A typical order for one application: `version-manager` (set up the master
+resume once) → `job-description-analyzer` → the by-role skill if one applies →
+`tailor` → `ats-optimizer` → `formatter` → `cover-letter-generator` or
+`application-form-filler` → `interview-prep-generator` →
+`salary-negotiation-prep` and `offer-comparison-analyzer`. `section-builder`
+takes a general resume review with no posting in hand.
+
+They are a one-time fork of
+[ResumeSkills](https://github.com/Paramchoudhary/ResumeSkills) (MIT, at
+`74ae19e`), rewritten in this repo's style and edited here by hand: no upstream
+sync. The upstream notice is kept in
+[`plugins/resume/LICENSE`](plugins/resume/LICENSE). `scripts/check-resume`
+validates the plugin: frontmatter that parses as YAML with exactly `name`,
+`description` and `metadata`, links, every bundled file wired, sibling skill
+names (bold lowercase tokens are reserved for them) and
+`claude plugin validate`. Nothing runs it automatically, so run it after
+editing a skill. It needs `ruby` (the macOS system one is enough).
 
 ## Install
 
@@ -37,9 +66,10 @@ too.
 ```shell
 claude plugin marketplace add jrmatherly/skills
 claude plugin install jstack@jrmatherly-skills
+claude plugin install resume@jrmatherly-skills
 ```
 
-The plugin has no `version`, so updates follow this repo's commits:
+The plugins have no `version`, so updates follow this repo's commits:
 `claude plugin marketplace update jrmatherly-skills`.
 
 **Skills CLI** (Codex, Amp and other agents) — install skills by name, globally:
@@ -49,9 +79,11 @@ npx skills add jrmatherly/skills -g -s coding-standards   # one skill
 npx skills add jrmatherly/skills --list                   # what's in the repo
 ```
 
-Avoid `--all`: the CLI also finds jstack's 46 skills under `plugins/`, which are
-written for Claude Code (its tools, `${CLAUDE_PLUGIN_ROOT}` paths) and would land
-in every agent. Keep skills current with `npx skills update`, and check what's
+Avoid `--all`: the CLI also finds the plugins' skills under `plugins/`.
+jstack's 46 are written for Claude Code (its tools, `${CLAUDE_PLUGIN_ROOT}`
+paths), and with resume's 22 they would all land in every agent. The resume
+skills are plain Markdown, so another agent can take one by name
+(`-s tailor`). Keep skills current with `npx skills update`, and check what's
 installed with `npx skills ls -g`.
 
 ## Add a skill

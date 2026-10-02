@@ -1,0 +1,67 @@
+#!/bin/bash
+# Validate plugins/resume: frontmatter that parses as YAML with exactly name,
+# description and metadata, live links, every bundled file linked from its
+# SKILL.md, sibling-skill references that exist, no upstream names, and the
+# upstream license notice.
+set -uo pipefail
+dir="${1:-$(cd "$(dirname "$0")/.." && pwd -P)/plugins/resume}"
+fail=0
+bad() { echo "$*" >&2; fail=1; }
+
+# A hand-edited description with an unquoted ": " is invalid YAML that
+# `claude plugin validate` accepts, so parse with a real parser (system ruby)
+ruby -ryaml -e '
+  ok = true
+  Dir.glob(File.join(ARGV[0], "skills", "*")).sort.each do |d|
+    next unless File.directory?(d)
+    f = File.join(d, "SKILL.md")
+    err = lambda { |m| warn "#{f}: #{m}"; ok = false }
+    next err.call("missing") unless File.file?(f)
+    m = File.read(f).match(/\A---\n(.*?)\n---\n(.*)\z/m)
+    next err.call("no frontmatter") unless m
+    begin
+      fm = YAML.safe_load(m[1])
+    rescue Psych::Exception => e
+      next err.call("invalid YAML: #{e.message}")
+    end
+    next err.call("frontmatter is not a mapping") unless fm.is_a?(Hash)
+    err.call("keys #{fm.keys.inspect}, want name, description, metadata") unless fm.keys == %w[name description metadata]
+    err.call("name #{fm["name"].inspect} != directory") unless fm["name"] == File.basename(d)
+    desc = fm["description"]
+    err.call("description missing or over 1024 characters") unless desc.is_a?(String) && !desc.empty? && desc.length <= 1024
+    err.call("metadata needs author and version") unless fm["metadata"].is_a?(Hash) && fm["metadata"].keys.sort == %w[author version]
+    err.call("empty body") if m[2].strip.empty?
+  end
+  exit(ok ? 0 : 1)
+' "$dir" || fail=1
+
+for d in "$dir"/skills/*/; do
+  d="${d%/}"
+  [ -f "$d/SKILL.md" ] || continue
+  while IFS= read -r file; do
+    grep -qF "(${file#"$d"/})" "$d/SKILL.md" || bad "$file: not linked from SKILL.md"
+  done < <(find "$d" -type f ! -name SKILL.md ! -name .DS_Store)
+done
+
+while IFS=: read -r f _ m; do
+  t="${m#*(}"; t="${t%)}"; t="${t%%#*}"
+  case $t in */* | *.*) ;; *) continue ;; esac # placeholders like (url) in templates
+  [ -e "$(dirname "$f")/$t" ] || bad "$f: broken link $t"
+done < <(grep -rnoE --include='*.md' '\]\([^):]+\)' "$dir")
+
+# Bold lowercase tokens are reserved for sibling skill names, with or without
+# the word "skill" after them
+skills=$(find "$dir/skills" -mindepth 1 -maxdepth 1 -type d -exec basename {} \;)
+while IFS=: read -r f _ ref; do
+  ref="${ref#\*\*}"; ref="${ref%\*\*}"
+  grep -qx "$ref" <<< "$skills" || bad "$f: **$ref** is not a skill in this plugin"
+done < <(grep -rnoE --include='*.md' '\*\*[a-z][a-z0-9-]*\*\*' "$dir")
+
+while IFS= read -r hit; do bad "$hit: upstream reference"; done \
+  < <(grep -rnEI --exclude=LICENSE --exclude=plugin.json 'ResumeSkills|Paramchoudhary|\bresume-(ats-optimizer|formatter|bullet-writer|quantifier|section-builder|tailor|version-manager)\b|\bCursor\b' "$dir")
+while IFS= read -r link; do bad "$link: symlink"; done < <(find "$dir" -type l)
+
+grep -q 'Copyright (c) 2026 Resume Skills' "$dir/LICENSE" || bad "LICENSE: upstream notice missing"
+grep -q 'Permission is hereby granted' "$dir/LICENSE" || bad "LICENSE: permission text missing"
+claude plugin validate "$dir" > /dev/null 2>&1 || bad "claude plugin validate $dir failed"
+exit $fail
