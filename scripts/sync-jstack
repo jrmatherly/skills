@@ -38,13 +38,21 @@ mv "$stage/skills/poteto-mode" "$stage/skills/j-mode"
 mv "$stage/skills/setup-pstack" "$stage/skills/setup-jstack"
 mv "$stage/agents/poteto-agent.md" "$stage/agents/j-agent.md"
 
-# Literal substitutions, in file order, over text files (bun.lock is
-# regenerated below; LICENSE keeps the upstream notice verbatim)
+# Whole-word literal substitutions, in file order: where a term starts or
+# ends with a letter or digit, a match touching another one there is left
+# alone ("Upstack" must not become "Ujstack"). Text files only: bun.lock is
+# regenerated below, LICENSE keeps the upstream notice.
 while IFS=$'\t' read -r from to; do
   if [ -z "$from" ] || [ "${from:0:1}" = "#" ]; then continue; fi
   { grep -rlF --exclude=bun.lock --exclude=LICENSE -- "$from" "$stage" || true; } \
     | while read -r f; do
-      FROM="$from" TO="$to" perl -pi -e 's/\Q$ENV{FROM}\E/$ENV{TO}/g' "$f"
+      FROM="$from" TO="$to" perl -pi -e '
+        BEGIN {
+          $re = quotemeta $ENV{FROM};
+          $re = "(?<![A-Za-z0-9])$re" if $ENV{FROM} =~ /^[A-Za-z0-9]/;
+          $re = "$re(?![A-Za-z0-9])" if $ENV{FROM} =~ /[A-Za-z0-9]$/;
+        }
+        s/$re/$ENV{TO}/g' "$f"
     done
 done < "$root/jstack/substitutions.tsv"
 
