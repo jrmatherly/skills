@@ -77,18 +77,30 @@ agents and `LICENSE` (dropping `make-bot-ui`, which drives Cursor's hosted
 agents), applies `jstack/substitutions.tsv` (whole-word renames such as
 `poteto-mode` → `j-mode` and Cursor → Claude Code tool names), then
 `jstack/patches/*.patch` in order (`10-router`, `20-runtime`, `30-models`,
-`40-comments`). It regenerates `bun.lock`, and only replaces `plugins/jstack/`
-when these pass:
+`40-comments`, `50-skill-refs`, `60-safety`). It regenerates `bun.lock`, and
+only replaces `plugins/jstack/` when these pass:
 
 - `scripts/check-jstack`: no upstream names or Cursor-only references left,
-  skill names match their folders, links resolve, every skill a skill names
-  exists, the upstream license notice is intact, and `claude plugin validate`
-  passes
-- upstream's Bun tests (`bun test orch watch-pr`) and `jstack/tests/*.sh`
+  skill names match their folders, links resolve, every `**name** skill` and
+  `**name** principle skill` reference is a real skill folder (plus the
+  separately installed `coding-standards`), no skill or agent grants itself
+  `allowed-tools`, `hooks`, `mcpServers` or `permissionMode`, no symlinks, the
+  upstream license notice is intact, and `claude plugin validate` passes
+- upstream's Bun tests (`bun test orch watch-pr`) and
+  `jstack/tests/worktree-audit.sh`
+
+Sync runs upstream code (Bun's install and tests), so it's fenced in: the pin
+must be a full 40-character SHA (a short one can be shadowed by an upstream tag
+of the same name) and is checked after checkout, an upstream that ships
+`bunfig.toml`, `.npmrc` or symlinks is refused before Bun runs, and installs
+use `--production --ignore-scripts` (only `commander`, no install scripts). The
+plugin's own runtime install in `j-mode/scripts/bootstrap.ts` uses the same
+flags (`60-safety`).
 
 ### Update from upstream
 
-1. Set `commit=` in `jstack/upstream` to the new upstream commit.
+1. Set `commit=` in `jstack/upstream` to the new upstream commit's full SHA,
+   after reading what changed upstream (`git log -p <old>..<new> -- pstack`).
 2. Run `scripts/sync-jstack`. A patch that no longer applies stops it with the
    patch's name, leaving `plugins/jstack/` untouched.
 3. Refresh that patch (below), re-run, review `git diff plugins/`, commit.
@@ -110,10 +122,13 @@ cp -R "$base" "${base%-base}-edit"
 ```
 
 Keep one area per patch, so an upstream change breaks one patch, not all.
+`scripts/sync-jstack --no-patches --out DIR` gives the tree before any patch.
+A new substitution row can shift text a patch is anchored to: rebuild each
+patch against the new table rather than editing hunks by hand.
 
 ### Attribution
 
 jstack is a fork of [pstack](https://github.com/cursor/plugins/tree/main/pstack)
 by Lauren Tan, MIT-licensed; the upstream notice is kept in
 [`plugins/jstack/LICENSE`](plugins/jstack/LICENSE). Pinned upstream:
-`cursor/plugins@12d587d` (pstack 0.15.5).
+`cursor/plugins@12d587dfb20741cafc376c42c696c5f6e2a64487` (pstack 0.15.5).

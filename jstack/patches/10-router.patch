@@ -120,7 +120,7 @@ index 02c057f..e03ed55 100644
  - **Worktree and simulator cleanup.** Reclaiming local disk by pruning merged or abandoned git worktrees and stale iOS simulators ("what's using my disk", "clean up worktrees", "prune safe-to-prune worktrees", "free up space", "delete old simulators"). `playbooks/worktree-cleanup.md`.
  - **Opening a PR.** Invoked at the end of every other playbook. `playbooks/opening-a-pr.md`.
 diff --git a/skills/j-mode/playbooks/authoring-a-skill.md b/skills/j-mode/playbooks/authoring-a-skill.md
-index 8c5a55a..37f2aba 100644
+index 4853fcc..2d64eb7 100644
 --- a/skills/j-mode/playbooks/authoring-a-skill.md
 +++ b/skills/j-mode/playbooks/authoring-a-skill.md
 @@ -2,7 +2,7 @@
@@ -133,7 +133,7 @@ index 8c5a55a..37f2aba 100644
  3. Test cases if structural. Skip if subjective.
  4. Run **Opening a PR**.
 diff --git a/skills/j-mode/playbooks/autonomous-run.md b/skills/j-mode/playbooks/autonomous-run.md
-index cba1ec3..99829a7 100644
+index b0848f9..10a5fd9 100644
 --- a/skills/j-mode/playbooks/autonomous-run.md
 +++ b/skills/j-mode/playbooks/autonomous-run.md
 @@ -3,7 +3,7 @@
@@ -143,7 +143,7 @@ index cba1ec3..99829a7 100644
 -2. Pick the wake mechanism using Cursor's `/loop` command (a built-in, not a jstack skill). An event to watch (CI, a merge, a ref advancing) gets a watcher subagent that wakes you on the event, with a long time-based heartbeat as fallback. No event gets a fixed-interval heartbeat sized to when the result is worth re-checking.
 +2. Pick the wake mechanism using Claude Code's `/loop` command (a built-in, not a jstack skill). An event to watch (CI, a merge, a ref advancing) gets a watcher subagent that wakes you on the event, with a long time-based heartbeat as fallback. No event gets a fixed-interval heartbeat sized to when the result is worth re-checking.
  3. Each iteration makes the smallest change the evidence justifies, verifies it against the predicate, commits if it advanced, discards changes that didn't help. Belt-and-suspenders that "might help" gets reverted, not left to ride.
-    Sequence the work via the **sequence-verifiable-units** principle skill, verifying each unit before the next instead of batching checks at the end.
+    Sequence the work via the **principle-sequence-verifiable-units** skill, verifying each unit before the next instead of batching checks at the end.
  4. Mid-run discoveries are yours. Address broken skills, related bugs, flaky verifiers, review noise, tooling failures, orphaned follow-ups, and fixable drift yourself via j-mode. Put out-of-band fixes in their own PR. Do not park reversible work for the human or use `AskUserQuestion`. Surface only irreversible actions, genuine product or preference calls no experiment can settle, or a real dead end. Keep the predicate as the main drive, and return to it after each side fix.
 diff --git a/skills/j-mode/playbooks/babysit.md b/skills/j-mode/playbooks/babysit.md
 index 683cf0b..3c71b1e 100644
@@ -158,12 +158,12 @@ index 683cf0b..3c71b1e 100644
  Babysitting starts when the user asks for it, which is normally once a phase or a whole stack is built, not when a PR opens. Finish the stack, get it green here, then land it through Shipping.
  
 diff --git a/skills/j-mode/playbooks/multi-phase-plan.md b/skills/j-mode/playbooks/multi-phase-plan.md
-index 13b6077..9ce8bb2 100644
+index 4070e31..6f49bb2 100644
 --- a/skills/j-mode/playbooks/multi-phase-plan.md
 +++ b/skills/j-mode/playbooks/multi-phase-plan.md
 @@ -12,7 +12,7 @@
  
- **Verification.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked (the **prove-it-works** principle skill). That sentence is the verification rule. Every verification block opens with it. The live block is mandatory. Ten lanes at the PR head drive the real surface through its control skill, per the **swarm** skill, on the `swarm workers` model (default `grok-4.7-xhigh-fast`). Each lane is one box with a concrete scenario, the screenshot it saves, and its pass predicate. One lane is the **Regression lane against trunk.** It runs the same load-bearing scenario on trunk and head. If trunk does not have the feature, the lane records that fact and gates the behavior the diff adds plus the end state the user waits for instead of inventing a trunk result. The perf gate is dual-sided. Trunk and head must both produce the named metric. If trunk lacks the feature, also isolate the work the diff adds and set an absolute budget for that work plus the end-to-end state the user waits for. Do not claim a ratio between unlike scenarios. The perf block names the metric, the interleaved probe, the trunk baseline measured first, and the rule with the number that fails. A PR that changes an interaction is review-gated. The operator reviews it in chat with screenshots and a video before merge. A PR that changes no interaction writes `**Review gate.** None. <PR id> is not review-gated.` and no boxes under it.
+ **Verification.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked (the **principle-prove-it-works** skill). That sentence is the verification rule. Every verification block opens with it. The live block is mandatory. Ten lanes at the PR head drive the real surface through its control skill, per the **swarm** skill, on the `swarm workers` model (default `grok-4.7-xhigh-fast`). Each lane is one box with a concrete scenario, the screenshot it saves, and its pass predicate. One lane is the **Regression lane against trunk.** It runs the same load-bearing scenario on trunk and head. If trunk does not have the feature, the lane records that fact and gates the behavior the diff adds plus the end state the user waits for instead of inventing a trunk result. The perf gate is dual-sided. Trunk and head must both produce the named metric. If trunk lacks the feature, also isolate the work the diff adds and set an absolute budget for that work plus the end-to-end state the user waits for. Do not claim a ratio between unlike scenarios. The perf block names the metric, the interleaved probe, the trunk baseline measured first, and the rule with the number that fails. A PR that changes an interaction is review-gated. The operator reviews it in chat with screenshots and a video before merge. A PR that changes no interaction writes `**Review gate.** None. <PR id> is not review-gated.` and no boxes under it.
  
 -**Control skill.** Pick it by surface. Browser, Electron, and web UIs use `control-ui` from `cursor-team-kit`. CLIs and TUIs use `control-cli` from `cursor-team-kit`. Native mobile uses whatever simulator-driving skill the repo has. A PR that touches two surfaces gets lanes on both. A surface with no control skill is a risk in Appendix C, and its live block still names how each lane drives it.
 +**Control skill.** Pick it by surface. Browser, Electron, and web UIs use the `chrome-devtools-mcp:chrome-devtools` skill. CLIs and TUIs use the `run` skill. Native mobile uses whatever simulator-driving skill the repo has. A PR that touches two surfaces gets lanes on both. A surface with no control skill is a risk in Appendix C, and its live block still names how each lane drives it.
@@ -218,7 +218,7 @@ index b2fc7d3..2d10e4b 100644
  Use this reference when the Babysit playbook (`../playbooks/babysit.md`) handles Bugbot or review-automation comments. The goal is not to ignore Bugbot by default. The goal is to stop treating every comment as a required code change.
  
 diff --git a/skills/reflect/SKILL.md b/skills/reflect/SKILL.md
-index a4af774..bebfb0a 100644
+index 22362e5..9dd0a88 100644
 --- a/skills/reflect/SKILL.md
 +++ b/skills/reflect/SKILL.md
 @@ -57,9 +57,9 @@ Backlog items file to whatever devex / backlog tracker your team uses automatica

@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # Why
 
+jstack's skills are read, not invoked (they set `disable-model-invocation`): a skill named here lives at `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`.
+
 Investigate the motivation and intent behind code.
 
 Companion to the `how` skill. `how` answers what the code does and how it works. `why` answers what forces led to its shape.

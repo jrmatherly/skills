@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # Interrogate
 
+jstack's skills are read, not invoked (they set `disable-model-invocation`): a skill named here lives at `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`.
+
 Spawn one reviewer per configured model to adversarially review code changes. Each model gets the same prompt and rubric. The adversarial signal comes from model diversity, not assigned personas.
 
 The deliverable is a synthesized verdict. Do NOT auto-apply changes.

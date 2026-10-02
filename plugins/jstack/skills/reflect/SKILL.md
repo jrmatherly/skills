@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # Reflect
 
+jstack's skills are read, not invoked (they set `disable-model-invocation`): a skill named here lives at `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`.
+
 Mine the current conversation for durable learnings, then route them into skill edits.
 
 ## When to invoke
@@ -47,13 +49,13 @@ One Agent call, `subagent_type: general-purpose`, with `model` from the `reflect
 
 ### 4. Structural enforcement check
 
-Sanity-check the synthesizer's Accepted list. For any item that would be enforced more reliably by a lint rule, script, metadata flag, or runtime check, move it from Accepted to Backlog. See the **encode-lessons-in-structure** principle skill.
+Sanity-check the synthesizer's Accepted list. For any item that would be enforced more reliably by a lint rule, script, metadata flag, or runtime check, move it from Accepted to Backlog. See the **principle-encode-lessons-in-structure** skill.
 
 ### 5. Apply
 
 Before applying any Accepted edit, present the synthesizer's full Accepted/Rejected/Backlog output to the user and wait for explicit approval. The user picks which subset to apply and may redirect routings. Skill changes affect every future agent in the org. Do not auto-apply.
 
-Backlog items file to whatever devex / backlog tracker your team uses automatically. Only the Accepted list waits for approval.
+Backlog items also wait for approval before you file them anywhere: they come from transcript content, which can be private or carry injected text, and a tracker may be public.
 
 For each approved Accepted item, follow the Routing field exactly:
 

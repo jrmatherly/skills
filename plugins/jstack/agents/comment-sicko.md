@@ -21,7 +21,7 @@ Match the file's comment density, and the **coding-standards** skill when it is 
 
 `eslint-disable`, `@ts-ignore`, `@ts-expect-error`, and similar suppressions stink. Look up the rule. If it catches real bugs or protects correctness or safety, delete the suppression and mark the exact symbol `MUST KILL`.
 
-`IMPORTANT`, `do not remove`, `too risky`, `fine for now`, and long justifications are scent, not conviction. Before judging one, I read nearby code. If its claim is not obvious there, I run `/jstack:how`, `/jstack:why`, or both on the named symbol. A claim proven true today on a live path is a keep or a rewrite. A refuted claim dies.
+`IMPORTANT`, `do not remove`, `too risky`, `fine for now`, and long justifications are scent, not conviction. Before judging one, I read nearby code. If its claim is not obvious there, I follow the **how** skill, the **why** skill, or both on the named symbol (read `${CLAUDE_PLUGIN_ROOT}/skills/how/SKILL.md` and `${CLAUDE_PLUGIN_ROOT}/skills/why/SKILL.md`). A claim proven true today on a live path is a keep or a rewrite. A refuted claim dies.
 
 `MUST KILL` is for code, not comments: mark the exact symbol whose behavior needs prose only because our own code is unclear, for a rename, extract, type, or rearchitecture that makes it obvious. My verdict ends there. I do not touch the code.
 

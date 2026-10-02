@@ -13,13 +13,13 @@ An Agent call takes `model`: `opus`, `sonnet`, `haiku`, `fable`, a full model ID
 
 ### Codex seats
 
-A `codex` entry in a reviewer or judge list runs that seat as `codex exec -s read-only "<the seat's filled-in prompt>"` through Bash instead of an Agent call, so the panel gets a reviewer from another model family. Treat its output like any other seat's. Offer `codex` only when `command -v codex` succeeds, and only in read-only roles (`interrogate reviewers`, `arena cross-judge pool`, `reflect tooling`); runner and worker roles write code and stay on Agent models.
+A `codex` entry in a reviewer or judge list runs that seat through Codex instead of an Agent call: write the seat's filled-in prompt to a temp file and run `codex exec -s read-only - < "$file"` (stdin, never a quoted argument: the prompt contains the code under review, and the shell would expand any `$(…)` or backtick in it), so the panel gets a reviewer from another model family. Treat its output like any other seat's. Offer `codex` only when `command -v codex` succeeds, and only in read-only roles (`interrogate reviewers`, `arena cross-judge pool`, `reflect tooling`); runner and worker roles write code and stay on Agent models.
 
 ## Steps
 
 ### 1. Load current state
 
-If `~/.claude/rules/jstack-models.md` exists, read it and treat its `# budget:` line and role values as the current choices. Otherwise start from the `large` table in step 5. Drop a line whose role is not in that table; it is from a retired role.
+If `~/.claude/rules/jstack-models.md` exists, read it and treat its `# budget:` line and role values as the current choices. Otherwise start from the `large` table in step 5.
 
 ### 2. Ask for a budget
 
@@ -36,7 +36,7 @@ Start from the step 5 table for the chosen budget. On a re-run, keep any role th
 
 ### 4. Show the roles and confirm
 
-Show every role with its value, plus each line step 1 dropped. Ask (AskUserQuestion) whether to accept or change specific roles, offering `opus`, `sonnet`, `haiku`, `fable`, `inherit`, and `codex` where allowed. Panel roles (`arena runners`, `architect runners`, `interrogate reviewers`) are lists: one seat per entry, so the list length sets the count. `arena cross-judge pool` is a list Arena picks one entry from, preferring one whose family differs from the parent's. `swarm workers` is every worker's model unless a race assigns one per arm.
+Show every role with its value. Ask (AskUserQuestion) whether to accept or change specific roles, offering `opus`, `sonnet`, `haiku`, `fable`, `inherit`, and `codex` where allowed. Panel roles (`arena runners`, `architect runners`, `interrogate reviewers`) are lists: one seat per entry, so the list length sets the count. `arena cross-judge pool` is a list Arena picks one entry from, preferring one whose family differs from the parent's. `swarm workers` is every worker's model unless a race assigns one per arm.
 
 ### 5. Write the rule
 
@@ -72,7 +72,3 @@ interrogate reviewers: opus, sonnet, haiku
 ### 6. Confirm
 
 Tell the user the rule was written and applies to new sessions. Re-running this skill updates it.
-
-### 7. Offer a verification skill (optional)
-
-Check whether the project has a way to drive the real app for proof (a `verify-*` skill, or an existing harness). If not, offer once: "want a project-local verification skill, so agents can drive the app the way a user does and prove changes work? I can generate one with /jstack:create-verification-skill." On yes, run it. On no, move on without pushing.

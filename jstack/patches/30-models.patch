@@ -1,5 +1,5 @@
 diff --git a/skills/architect/SKILL.md b/skills/architect/SKILL.md
-index 0c68169..0767c74 100644
+index 9de252d..1cc5b34 100644
 --- a/skills/architect/SKILL.md
 +++ b/skills/architect/SKILL.md
 @@ -30,7 +30,7 @@ Skip Phase A only when the work is genuinely greenfield with no surrounding syst
@@ -9,10 +9,10 @@ index 0c68169..0767c74 100644
 -Take the runners from the `architect runners` line in the `jstack-models.md` rule, in place of the `arena runners` line. If the rule or that line is missing, use `claude-opus-5-5-max`, `gpt-5.6-sol-max`, `grok-4.7-xhigh-fast`. Alias and rejected entries follow the runner rules in the **arena** skill's Phase A.
 +Take the runners from the `architect runners` line in the `jstack-models.md` rule, in place of the `arena runners` line. If the rule or that line is missing, use `opus`, `sonnet`, `sonnet`. Alias and rejected entries follow the runner rules in the **arena** skill's Phase A.
  
- Design it twice. Require at least two structurally distinct candidates before synthesis, even when the first looks sufficient. This is the **exhaust-the-design-space** principle skill made concrete. Whole-shape alternatives, not point fixes inside one shape.
+ Design it twice. Require at least two structurally distinct candidates before synthesis, even when the first looks sufficient. This is the **principle-exhaust-the-design-space** skill made concrete. Whole-shape alternatives, not point fixes inside one shape.
  
 diff --git a/skills/arena/SKILL.md b/skills/arena/SKILL.md
-index 87d0205..43236a0 100644
+index b57ae83..bc3eda1 100644
 --- a/skills/arena/SKILL.md
 +++ b/skills/arena/SKILL.md
 @@ -25,7 +25,7 @@ The N candidates will receive the same prompt, so the prompt is the contract.
@@ -21,7 +21,7 @@ index 87d0205..43236a0 100644
  2. Derive the rubric. State what success looks like for *this* task, then turn it into 3-6 concrete gradeable criteria. The rubric is the picker's tool in Phase D. Candidates only see the task.
 -3. Pick the runners. Use the `arena runners` line in `~/.claude/rules/jstack-models.md`. If the rule or that line is missing, default to one each on `claude-opus-5-5-max`, `gpt-5.6-sol-max`, `grok-4.7-xhigh-fast`. An `auto` or `inherit-parent` entry in this line or the cross-judge line means the parent model, so omit `model` for it. If the Agent tool rejects a configured entry, run that seat on its family's default and say so. Families go by prefix: `claude-*`, `gpt-*`, and `grok-*`. With no family match, use `claude-opus-5-5-max`. If it rejects a default, use the closest valid slug of the same family from its error message. Spawn more when the arena covers multiple design directions. Same model N times when the work is generation-bound rather than judgment-sensitive.
 +3. Pick the runners. Use the `arena runners` line in `~/.claude/rules/jstack-models.md`. If the rule or that line is missing, default to `opus`, `sonnet`, `sonnet`. An `inherit` entry in this line or the cross-judge line means the parent's model, so omit `model` for it. If the Agent tool rejects an entry, run that seat on `sonnet` and say so. Spawn more when the arena covers multiple design directions. Same model N times when the work is generation-bound rather than judgment-sensitive.
- 4. Assign output paths. Each candidate writes to its own location (a git worktree where possible, otherwise `/tmp/arena-<slug>/candidate-<n>/`), per the **separate-before-serializing-shared-state** principle skill.
+ 4. Assign output paths. Each candidate writes to its own location (a git worktree where possible, otherwise `/tmp/arena-<slug>/candidate-<n>/`), per the **principle-separate-before-serializing-shared-state** skill.
  
  ## Phase B: Fan out
 @@ -38,7 +38,7 @@ If a candidate fails to produce output, proceed with N-1 and note the dropout in
@@ -128,18 +128,18 @@ index f787fb0..9e46e11 100644
  You own every subagent's work. Review the diff and write your own summary, don't pass through what it said. Interrupt-chained resumes silently drop directives, so fire a fresh subagent with consolidated scope rather than trusting a "done" summary. A second opinion is the same prompt against a different model. Agreement is high-signal.
  
 diff --git a/skills/j-mode/playbooks/multi-phase-plan.md b/skills/j-mode/playbooks/multi-phase-plan.md
-index edf247b..84e7a6d 100644
+index 405113e..39b9af7 100644
 --- a/skills/j-mode/playbooks/multi-phase-plan.md
 +++ b/skills/j-mode/playbooks/multi-phase-plan.md
 @@ -4,7 +4,7 @@
  
  1. When the change is one or two files with an obvious approach, skip the plan. Say so and stop.
- 2. Settle open questions by prototype before you write. Run `playbooks/prototype.md` for each. Keep the branch, the SHA, and the screenshots for Appendix A. Ask the operator only about a product or preference call that no run can settle. Give options (the **never-block-on-the-human** principle skill).
--3. Explore in subagents with `subagent_type: "j-agent"` and an explicit model per the Subagents section (the **guard-the-context-window** principle skill). Each returns file pointers, conventions, test commands, and entry points. No inlined dumps.
-+3. Explore in subagents with `subagent_type: "jstack:j-agent"` and an explicit model per the Subagents section (the **guard-the-context-window** principle skill). Each returns file pointers, conventions, test commands, and entry points. No inlined dumps.
- 4. Copy the skeleton below into the plan file and fill every placeholder. Unless the operator names a path, write the file under the agent store's `docs/`. Keep every heading and every sub-block in the order shown. One section per PR. One PR is one change with its own evidence (the **sequence-verifiable-units** principle skill). Name the execution playbook in **How to read this**. Pick between `playbooks/autopilot-full.md` and `playbooks/autopilot-stack.md` per the rule at the end of `playbooks/autopilot-stack.md`. A standing program takes `playbooks/orchestrate.md`.
+ 2. Settle open questions by prototype before you write. Run `playbooks/prototype.md` for each. Keep the branch, the SHA, and the screenshots for Appendix A. Ask the operator only about a product or preference call that no run can settle. Give options (the **principle-never-block-on-the-human** skill).
+-3. Explore in subagents with `subagent_type: "j-agent"` and an explicit model per the Subagents section (the **principle-guard-the-context-window** skill). Each returns file pointers, conventions, test commands, and entry points. No inlined dumps.
++3. Explore in subagents with `subagent_type: "jstack:j-agent"` and an explicit model per the Subagents section (the **principle-guard-the-context-window** skill). Each returns file pointers, conventions, test commands, and entry points. No inlined dumps.
+ 4. Copy the skeleton below into the plan file and fill every placeholder. Unless the operator names a path, write the file under the agent store's `docs/`. Keep every heading and every sub-block in the order shown. One section per PR. One PR is one change with its own evidence (the **principle-sequence-verifiable-units** skill). Name the execution playbook in **How to read this**. Pick between `playbooks/autopilot-full.md` and `playbooks/autopilot-stack.md` per the rule at the end of `playbooks/autopilot-stack.md`. A standing program takes `playbooks/orchestrate.md`.
  5. Write under `/technical-writing` in full, then `/unslop`. The body is one Diátaxis mode, how-to. Appendices hold explanation and reference. Each heading states the task or the finding. No long dashes. No mid-sentence colons.
- 6. Run `node <jstack>/skills/j-mode/scripts/check-plan.mjs <plan.md>` and fix every line it prints (the **encode-lessons-in-structure** principle skill).
+ 6. Run `node <jstack>/skills/j-mode/scripts/check-plan.mjs <plan.md>` and fix every line it prints (the **principle-encode-lessons-in-structure** skill).
 diff --git a/skills/j-mode/playbooks/opening-a-pr.md b/skills/j-mode/playbooks/opening-a-pr.md
 index 59302d8..3275cf4 100644
 --- a/skills/j-mode/playbooks/opening-a-pr.md
@@ -167,7 +167,7 @@ index 6fdf5a0..3815e10 100644
  
  Depth stays at coordinator, track, worker. Author the track decomposition per project (build, landing, and verification are common cuts, not a required shape). Hard-coded swarm trees were tried and parked as too rigid.
 diff --git a/skills/reflect/SKILL.md b/skills/reflect/SKILL.md
-index f562a46..b7d5a00 100644
+index 82d054c..96f823c 100644
 --- a/skills/reflect/SKILL.md
 +++ b/skills/reflect/SKILL.md
 @@ -29,21 +29,21 @@ For each candidate, read the first JSONL line and check that `message.content[0]

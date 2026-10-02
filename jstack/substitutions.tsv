@@ -2,16 +2,13 @@
 Poteto Mode	J Mode
 Poteto mode	J mode
 Poteto subagent	J subagent
-poteto-mode-tools	j-mode-tools
 poteto-mode	j-mode
 poteto-agent	j-agent
 poteto's	Jason's
-setup-pstack	setup-jstack
 ~/.cursor/rules/pstack-models.mdc	~/.claude/rules/jstack-models.md
 pstack-models.mdc	jstack-models.md
 @cursor-skill/	@jstack/
 pstack	jstack
-subagent_type: generalPurpose	subagent_type: general-purpose
 generalPurpose	general-purpose
 AskQuestion	AskUserQuestion
 the `Task` tool	the `Agent` tool
@@ -20,3 +17,25 @@ Task tool	Agent tool
 is_background: true	background: true
 "poteto/	"j/
 .cursor/skills/	.claude/skills/
+# Short principle names → their real skill folders (the checker requires it)
+**sequence-verifiable-units** principle skill	**principle-sequence-verifiable-units** skill
+**encode-lessons-in-structure** principle skill	**principle-encode-lessons-in-structure** skill
+**separate-before-serializing-shared-state** principle skill	**principle-separate-before-serializing-shared-state** skill
+**prove-it-works** principle skill	**principle-prove-it-works** skill
+**boundary-discipline** principle skill	**principle-boundary-discipline** skill
+**guard-the-context-window** principle skill	**principle-guard-the-context-window** skill
+**never-block-on-the-human** principle skill	**principle-never-block-on-the-human** skill
+**laziness-protocol** principle skill	**principle-laziness-protocol** skill
+**foundational-thinking** principle skill	**principle-foundational-thinking** skill
+**exhaust-the-design-space** principle skill	**principle-exhaust-the-design-space** skill
+**build-the-lever** principle skill	**principle-build-the-lever** skill
+**type-system-discipline** principle skill	**principle-type-system-discipline** skill
+**subtract-before-you-add** principle skill	**principle-subtract-before-you-add** skill
+**redesign-from-first-principles** principle skill	**principle-redesign-from-first-principles** skill
+**outcome-oriented-execution** principle skill	**principle-outcome-oriented-execution** skill
+**minimize-reader-load** principle skill	**principle-minimize-reader-load** skill
+**make-operations-idempotent** principle skill	**principle-make-operations-idempotent** skill
+**fix-root-causes** principle skill	**principle-fix-root-causes** skill
+**type-system-discipline** and **boundary-discipline** principle skills	**principle-type-system-discipline** and **principle-boundary-discipline** skills
+**laziness-protocol** and **minimize-reader-load** principle skills	**principle-laziness-protocol** and **principle-minimize-reader-load** skills
+**redesign-from-first-principles** and **fix-root-causes** principle skills	**principle-redesign-from-first-principles** and **principle-fix-root-causes** skills

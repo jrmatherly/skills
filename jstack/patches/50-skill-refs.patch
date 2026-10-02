@@ -1,0 +1,104 @@
+diff --git a/agents/comment-sicko.md b/agents/comment-sicko.md
+index e649e86..c0f2f92 100644
+--- a/agents/comment-sicko.md
++++ b/agents/comment-sicko.md
+@@ -21,7 +21,7 @@ Match the file's comment density, and the **coding-standards** skill when it is
+ 
+ `eslint-disable`, `@ts-ignore`, `@ts-expect-error`, and similar suppressions stink. Look up the rule. If it catches real bugs or protects correctness or safety, delete the suppression and mark the exact symbol `MUST KILL`.
+ 
+-`IMPORTANT`, `do not remove`, `too risky`, `fine for now`, and long justifications are scent, not conviction. Before judging one, I read nearby code. If its claim is not obvious there, I run `/jstack:how`, `/jstack:why`, or both on the named symbol. A claim proven true today on a live path is a keep or a rewrite. A refuted claim dies.
++`IMPORTANT`, `do not remove`, `too risky`, `fine for now`, and long justifications are scent, not conviction. Before judging one, I read nearby code. If its claim is not obvious there, I follow the **how** skill, the **why** skill, or both on the named symbol (read `${CLAUDE_PLUGIN_ROOT}/skills/how/SKILL.md` and `${CLAUDE_PLUGIN_ROOT}/skills/why/SKILL.md`). A claim proven true today on a live path is a keep or a rewrite. A refuted claim dies.
+ 
+ `MUST KILL` is for code, not comments: mark the exact symbol whose behavior needs prose only because our own code is unclear, for a rename, extract, type, or rearchitecture that makes it obvious. My verdict ends there. I do not touch the code.
+ 
+diff --git a/skills/architect/SKILL.md b/skills/architect/SKILL.md
+index bfa0f21..07ab379 100644
+--- a/skills/architect/SKILL.md
++++ b/skills/architect/SKILL.md
+@@ -6,6 +6,8 @@ disable-model-invocation: true
+ 
+ # Architect
+ 
++jstack's skills are read, not invoked (they set `disable-model-invocation`): a skill named here lives at `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`.
++
+ Design before implementing. Sketch types, function signatures, class shapes, and module boundaries with `not implemented` bodies and pseudocode. Synthesize across multiple model perspectives, then fill in code against the chosen sketch. If implementation proves the sketch wrong, throw it out and redesign.
+ 
+ ## Start
+diff --git a/skills/arena/SKILL.md b/skills/arena/SKILL.md
+index bc3eda1..4d129fe 100644
+--- a/skills/arena/SKILL.md
++++ b/skills/arena/SKILL.md
+@@ -6,6 +6,8 @@ disable-model-invocation: true
+ 
+ # Arena
+ 
++jstack's skills are read, not invoked (they set `disable-model-invocation`): a skill named here lives at `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`.
++
+ Fan out N parallel attempts at the same task. Read every candidate end to end. Pick the strongest as the base. Graft the best ideas from the others into it. Verify the synthesized result.
+ 
+ ## Start
+diff --git a/skills/how/SKILL.md b/skills/how/SKILL.md
+index 81ded2c..3682935 100644
+--- a/skills/how/SKILL.md
++++ b/skills/how/SKILL.md
+@@ -6,6 +6,8 @@ disable-model-invocation: true
+ 
+ # How
+ 
++jstack's skills are read, not invoked (they set `disable-model-invocation`): a skill named here lives at `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`.
++
+ Explore the codebase to answer "how does X work?" questions. Produce architectural explanations at the level of a senior engineer onboarding onto a subsystem, enough to build a working mental model, not so much that it reads like annotated source code.
+ 
+ Each spawn below names a role line in the `jstack-models.md` rule and a default. Set `model` to that line's value, or to the default if the rule or the line is missing. Leave `model` unset when the value is `inherit`. A `codex` value runs that seat through Codex instead of a subagent (see the **setup-jstack** skill, "Codex seats"); if `command -v codex` fails, use `opus` and say so. If the Agent tool rejects a value, use the default and say so.
+diff --git a/skills/interrogate/SKILL.md b/skills/interrogate/SKILL.md
+index fd63b5b..2b12ca8 100644
+--- a/skills/interrogate/SKILL.md
++++ b/skills/interrogate/SKILL.md
+@@ -6,6 +6,8 @@ disable-model-invocation: true
+ 
+ # Interrogate
+ 
++jstack's skills are read, not invoked (they set `disable-model-invocation`): a skill named here lives at `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`.
++
+ Spawn one reviewer per configured model to adversarially review code changes. Each model gets the same prompt and rubric. The adversarial signal comes from model diversity, not assigned personas.
+ 
+ The deliverable is a synthesized verdict. Do NOT auto-apply changes.
+diff --git a/skills/reflect/SKILL.md b/skills/reflect/SKILL.md
+index 96f823c..44fd118 100644
+--- a/skills/reflect/SKILL.md
++++ b/skills/reflect/SKILL.md
+@@ -6,6 +6,8 @@ disable-model-invocation: true
+ 
+ # Reflect
+ 
++jstack's skills are read, not invoked (they set `disable-model-invocation`): a skill named here lives at `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`.
++
+ Mine the current conversation for durable learnings, then route them into skill edits.
+ 
+ ## When to invoke
+diff --git a/skills/swarm/SKILL.md b/skills/swarm/SKILL.md
+index 19a1511..0a8dff3 100644
+--- a/skills/swarm/SKILL.md
++++ b/skills/swarm/SKILL.md
+@@ -6,6 +6,8 @@ disable-model-invocation: true
+ 
+ # Swarm
+ 
++jstack's skills are read, not invoked (they set `disable-model-invocation`): a skill named here lives at `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`.
++
+ Fan out N parallel background workers. They may cover separate slices, race the same brief, or mix both. The parent waits, aggregates, and returns one report.
+ 
+ ## Start
+diff --git a/skills/why/SKILL.md b/skills/why/SKILL.md
+index 9aa2566..26b0b21 100644
+--- a/skills/why/SKILL.md
++++ b/skills/why/SKILL.md
+@@ -6,6 +6,8 @@ disable-model-invocation: true
+ 
+ # Why
+ 
++jstack's skills are read, not invoked (they set `disable-model-invocation`): a skill named here lives at `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`.
++
+ Investigate the motivation and intent behind code.
+ 
+ Companion to the `how` skill. `how` answers what the code does and how it works. `why` answers what forces led to its shape.

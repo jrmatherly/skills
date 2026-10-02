@@ -20,20 +20,28 @@ done
 die() { echo "sync-jstack: $*" >&2; exit 1; }
 command -v bun > /dev/null || die "bun: not found (mise install bun)"
 
+# repo=, path=, commit= (a full SHA: a short one can be shadowed by an upstream
+# tag or branch of the same name, or collide as the repo grows)
 repo=$(sed -n 's/^repo=//p' "$root/jstack/upstream")
 path=$(sed -n 's/^path=//p' "$root/jstack/upstream")
 commit=$(sed -n 's/^commit=//p' "$root/jstack/upstream")
+[[ $commit =~ ^[0-9a-f]{40}$ ]] || die "fetch: commit in jstack/upstream must be a full 40-character SHA"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
 git clone -q --filter=blob:none --no-checkout "$repo" "$work/src" || die "fetch: clone failed"
 git -C "$work/src" sparse-checkout set "$path"
-git -C "$work/src" checkout -q "$commit" || die "fetch: commit $commit not found"
+git -C "$work/src" checkout -q --detach "$commit^{commit}" || die "fetch: commit $commit not found"
+[ "$(git -C "$work/src" rev-parse HEAD)" = "$commit" ] || die "fetch: checked out something other than $commit"
 src="$work/src/$path"
 
 stage="$work/jstack"
 mkdir -p "$stage/.claude-plugin"
 cp -R "$src/skills" "$src/agents" "$src/LICENSE" "$stage/"
+# bun runs below on upstream files: refuse config that would redirect or
+# extend it (registry, preload scripts), and links that would be published
+rogue=$(find "$stage" -name bunfig.toml -o -name .npmrc -o -type l)
+[ -z "$rogue" ] || die "fetch: upstream ships files sync won't run bun next to: ${rogue//$stage\//}"
 mv "$stage/skills/poteto-mode" "$stage/skills/j-mode"
 mv "$stage/skills/setup-pstack" "$stage/skills/setup-jstack"
 mv "$stage/agents/poteto-agent.md" "$stage/agents/j-agent.md"
@@ -62,7 +70,6 @@ done < "$root/jstack/substitutions.tsv"
 if [ "$apply_patches" = true ]; then
   git -C "$stage" init -q # git apply resolves paths against a repo
   for p in "$root"/jstack/patches/*.patch; do
-    [ -e "$p" ] || continue
     git -C "$stage" apply --whitespace=nowarn "$p" || die "patch: ${p##*/} no longer applies"
   done
   rm -rf "$stage/.git"
@@ -82,21 +89,20 @@ cat > "$stage/.claude-plugin/plugin.json" << 'JSON'
 JSON
 
 scripts="$stage/skills/j-mode/scripts"
-(cd "$scripts" && bun install --lockfile-only > /dev/null) || die "relock: bun install --lockfile-only failed"
+(cd "$scripts" && bun install --lockfile-only --ignore-scripts > /dev/null) || die "relock: bun install --lockfile-only failed"
 # JSTACK_NO_CHECK=1: patch-authoring escape hatch (README, "Patch workflow")
 if [ "${JSTACK_NO_CHECK:-}" != 1 ]; then
   "$root/scripts/check-jstack" "$stage" || die "check: see above"
 fi
 if [ "$apply_patches" = true ] && [ "${JSTACK_NO_CHECK:-}" != 1 ]; then
-  (cd "$scripts" && bun install --frozen-lockfile > /dev/null && bun test orch watch-pr > /dev/null) \
+  # Only runtime dependencies, and no install scripts (dependencies' never run)
+  (cd "$scripts" && bun install --frozen-lockfile --production --ignore-scripts > /dev/null &&
+    bun test orch watch-pr > /dev/null 2>&1) \
     || die "test: bun test failed in skills/j-mode/scripts"
   rm -rf "$scripts/node_modules"
-  # Regression tests for files the patches change (each takes the stage dir)
-  for test in "$root"/jstack/tests/*.sh; do
-    [ -e "$test" ] || continue
-    bash "$test" "$stage/skills/j-mode/scripts/worktree-audit.sh" > /dev/null \
-      || die "test: ${test##*/} failed"
-  done
+  # 20-runtime.patch rewrote worktree-audit.sh's transcript lookup
+  bash "$root/jstack/tests/worktree-audit.sh" "$scripts/worktree-audit.sh" > /dev/null \
+    || die "test: jstack/tests/worktree-audit.sh failed"
 fi
 
 rm -rf "$out" && mkdir -p "$(dirname "$out")" && mv "$stage" "$out"
