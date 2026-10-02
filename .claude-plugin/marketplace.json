@@ -1,0 +1,11 @@
+{
+  "name": "jrmatherly-skills",
+  "owner": { "name": "Jason Matherly" },
+  "plugins": [
+    {
+      "name": "jstack",
+      "description": "Jason's agent workflows (fork of pstack by Lauren Tan, MIT)",
+      "source": "./plugins/jstack"
+    }
+  ]
+}
