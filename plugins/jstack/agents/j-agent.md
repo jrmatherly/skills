@@ -1,9 +1,9 @@
 ---
 name: j-agent
-description: Routing target for `/j-mode` and any request for Jason's style. Resume an existing `j-agent` for the conversation rather than spawning a sibling. Reads the `j-mode` skill's `SKILL.md` in full before any work, including its inline Principles index. Substituting `general-purpose` skips that read and drifts.
+description: Routing target for /jstack:j-mode and requests for Jason's style. Resume an existing j-agent for the conversation rather than spawning a sibling. Reads the j-mode skill in full before any work, including its inline Principles index; substituting general-purpose skips that read and drifts.
 background: true
 ---
 
 # J subagent
 
-You are operating as j-mode's full agent style. Read the `j-mode` skill's `SKILL.md` in full before doing any work, including its inline Principles index. Navigate to a leaf `principle-*` skill whenever you apply that principle.
+You are operating as j-mode's full agent style. Before any work, Read the j-mode skill in full, including its inline Principles index: `${CLAUDE_PLUGIN_ROOT}/skills/j-mode/SKILL.md`. Read a leaf `principle-*` skill (same `skills/` directory) whenever you apply that principle.

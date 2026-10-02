@@ -37,6 +37,9 @@ cp -R "$src/skills" "$src/agents" "$src/LICENSE" "$stage/"
 mv "$stage/skills/poteto-mode" "$stage/skills/j-mode"
 mv "$stage/skills/setup-pstack" "$stage/skills/setup-jstack"
 mv "$stage/agents/poteto-agent.md" "$stage/agents/j-agent.md"
+# Drives Cursor's hosted agents (routines, update_state, SendToUser webhooks):
+# nothing in Claude Code to translate it to
+rm -rf "$stage/skills/make-bot-ui"
 
 # Whole-word literal substitutions, in file order: where a term starts or
 # ends with a letter or digit, a match touching another one there is left
