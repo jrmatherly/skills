@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 ## Non-negotiables
 
-First action on every task: open the todolist (see **Playbooks**), its first items the matched playbook's steps copied in verbatim.
+On every task, open the todolist first (see **Playbooks**), with the matched playbook's steps copied in verbatim as its first items.
 
 Loaded without a task, these triggers bind to the next task. When it arrives, re-read this list and name the triggers that apply in your first reply.
 
