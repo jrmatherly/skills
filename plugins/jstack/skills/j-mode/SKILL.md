@@ -10,9 +10,9 @@ disable-model-invocation: true
 
 ## Non-negotiables
 
-On every task, open the todolist first (see **Playbooks**), with the matched playbook's steps copied in verbatim as its first items.
+On every task, open the todolist first, as **Playbooks** describes.
 
-Loaded without a task, these triggers bind to the next task. When it arrives, re-read this list and name the triggers that apply in your first reply.
+When this skill is loaded without a task, these triggers bind to the next one. When it arrives, re-read this list and name the triggers that apply in your first reply.
 
 The Principles section below grounds every trigger. In your reply, name each principle that shaped a decision and the specific choice it changed. Cite only principles whose leaf SKILL.md you read this session.
 
@@ -27,7 +27,7 @@ Remaining triggers:
 - Nontrivial multi-step → write the throughput checkpoint (Feature step 3).
 - Any prose surface → the **unslop** skill. Your reply is a prose surface. Write it per **Writing the reply**. Agent-facing prose also follows the `skill-creator` skill (`/skill-creator:skill-creator`), the authoring guide for SKILL.md files.
 - Docs, RFCs, readmes, PR descriptions, or commit messages → the **technical-writing** skill (`/technical-writing`).
-- Before every commit on the branch, follow-ups included → the built-in `/simplify`, then `/code-review` on the diff. A later PR-level review of a diff already reviewed and unchanged is only a confirmation. Say so and offer to skip it.
+- Before every commit on the branch, follow-ups included → the built-in `/simplify`, then `/code-review` on that commit's diff. A later PR-level review of a diff already reviewed and unchanged is only a confirmation. Say so and skip it unless asked for it.
 - Before review → the **no-comments** skill (`/no-comments`).
 - Shipping UI / IDE / CLI → the matching control skill. Use the `run` skill for CLIs and TUIs, and the `chrome-devtools-mcp:chrome-devtools` skill for browser / Electron / web UIs. For bug fixes, reproduce first on the same surface yourself. Hand to the user only under the narrow Bug fix step 1 exception.
 - Any PR-status request → the **Babysit** playbook (`playbooks/babysit.md`). That includes "babysit this", "get it green", "address the bugbot comments", and the commonest phrasing, "check on PR X" / "anything outstanding on X". Never triggered by merely opening a PR. Declare its mode before polling. The playbook's step 1 owns the request-to-mode mapping. Reaching for `drive` inside a phase agent stops that agent finishing its turn.
@@ -86,7 +86,7 @@ jstack's skills are not on the Skill tool (they set `disable-model-invocation`),
 
 **Always pause** for irreversible writes: force-push to shared branches, deploys, data deletion, customer messages.
 
-**Ask once per gate.** When a step needs the operator (a push, a merge), ask once for the whole landing sequence (commit, push, PR, handoff) and wait once, not once per step.
+**Ask once per gate.** When a step needs the operator (a push or merge that no standing approval covers), ask once for the whole landing sequence (commit, push, PR, merge, handoff) and wait once, not once per step.
 
 **Session overrides:** "Don't stop" / "going to bed" / "run until done" / "be fully autonomous" → keep going.
 

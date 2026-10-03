@@ -109,8 +109,8 @@ agents and `LICENSE` (dropping `make-bot-ui`, which drives Cursor's hosted
 agents), applies `jstack/substitutions.tsv` (whole-word renames such as
 `poteto-mode` → `j-mode` and Cursor → Claude Code tool names), then
 `jstack/patches/*.patch` in order (`10-router`, `20-runtime`, `30-models`,
-`40-comments`, `50-skill-refs`, `60-safety`, `70-reflect`). It regenerates `bun.lock`, and
-only replaces `plugins/jstack/` when these pass:
+`40-comments`, `50-skill-refs`, `60-safety`, `70-reflect`). It regenerates
+`bun.lock`, and only replaces `plugins/jstack/` when these pass:
 
 - `scripts/check-jstack`: no upstream names or Cursor-only references left,
   skill names match their folders, links resolve, every `**name** skill` and
@@ -154,6 +154,9 @@ cp -R "$base" "${base%-base}-edit"
 ```
 
 Keep one area per patch, so an upstream change breaks one patch, not all.
+The exception is `NN-reflect`: learnings from a `/jstack:reflect` pass land
+there as one patch per pass, never as edits under `plugins/jstack/` (the next
+sync would discard them).
 `scripts/sync-jstack --no-patches --out DIR` gives the tree before any patch.
 A new substitution row can shift text a patch is anchored to: rebuild each
 patch against the new table rather than editing hunks by hand.
