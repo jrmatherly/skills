@@ -109,7 +109,7 @@ agents and `LICENSE` (dropping `make-bot-ui`, which drives Cursor's hosted
 agents), applies `jstack/substitutions.tsv` (whole-word renames such as
 `poteto-mode` → `j-mode` and Cursor → Claude Code tool names), then
 `jstack/patches/*.patch` in order (`10-router`, `20-runtime`, `30-models`,
-`40-comments`, `50-skill-refs`, `60-safety`). It regenerates `bun.lock`, and
+`40-comments`, `50-skill-refs`, `60-safety`, `70-reflect`). It regenerates `bun.lock`, and
 only replaces `plugins/jstack/` when these pass:
 
 - `scripts/check-jstack`: no upstream names or Cursor-only references left,

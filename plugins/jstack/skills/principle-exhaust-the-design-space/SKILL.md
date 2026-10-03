@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 When a novel interaction or architectural decision has no established precedent, explore several concrete alternatives before implementation. Building the wrong thing costs more than exploring three options.
 
-**The rule.** When the right answer is not obvious, build 2-3 competing prototypes or sketches. Compare them side by side. Only then commit. Design it twice is this rule by another name. A second flavor of the first shape does not count.
+**The rule.** When the right answer is not obvious, build 2-3 competing prototypes or sketches. Compare them side by side. Only then commit. Design it twice is this rule by another name. A second flavor of the first shape does not count. A sketch is a rendered artifact. For web UI, inject each option into the page (DevTools) and screenshot it at the target viewport. A list of prose options with a pick is not a comparison.
 
 **When it applies:**
 - Novel UI interactions (no prior art in the codebase)
