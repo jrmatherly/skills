@@ -20,17 +20,28 @@ trap 'rm -rf "$work"' EXIT
 # One commit, and only the blobs under the two sparse paths (the repo is large)
 git init -q "$work/src"
 git -C "$work/src" sparse-checkout set --no-cone "/$path/" /LICENSE
-git -C "$work/src" fetch -q --depth 1 --filter=blob:none "$repo" "$commit" || die "fetch: commit $commit not found"
+git -C "$work/src" fetch -q --depth 1 --filter=blob:none "$repo" "$commit" || die "fetch: could not fetch $commit from $repo"
 git -C "$work/src" checkout -q --detach FETCH_HEAD
 [ "$(git -C "$work/src" rev-parse HEAD)" = "$commit" ] || die "fetch: checked out something other than $commit"
 
+src="$work/src/$path"
+[ -f "$work/src/LICENSE" ] || die "fetch: upstream has no LICENSE at its root"
+# Only top-level .md files are copied, so anything else (a subdirectory, a
+# prompt in another format, a symlink) would slip past the link check below
+other=$(find "$src" -mindepth 1 \( ! -type f -o ! -name '*.md' \))
+[ -z "$other" ] || die "fetch: upstream has more than top-level .md files: ${other//$src\//}"
+
+# Apache-2.0 asks each changed file to say so
+notice="<!-- From $repo ($path, Apache-2.0), Cursor-rules frontmatter removed. Written by scripts/sync-supabase-prompts in jrmatherly/skills: do not edit. -->"
 stage="$work/references"
 mkdir "$stage"
-for f in "$work/src/$path"/*.md; do
-  [ -f "$f" ] && [ ! -L "$f" ] || die "fetch: ${f##*/} is not a regular file"
+for f in "$src"/*.md; do
   # Drop the Cursor-rules frontmatter (description, alwaysApply): the table in
   # SKILL.md does that job here
-  perl -0pe 's/\A---\n.*?\n---\n+//s' "$f" > "$stage/${f##*/}"
+  body=$(perl -0pe 's/\A---\n.*?\n---\n+//s' "$f")
+  # A file without that frontmatter would lose everything up to its first rule
+  [[ $body == '# '* ]] || die "strip: ${f##*/} doesn't start with a heading once its frontmatter is removed"
+  printf '%s\n\n%s\n' "$notice" "$body" > "$stage/${f##*/}"
 done
 
 # SKILL.md is the only way in: an upstream prompt it doesn't link is never
@@ -41,7 +52,7 @@ for f in "$stage"/*.md; do
 done
 while read -r link; do
   [ -f "$stage/${link#references/}" ] || die "check: SKILL.md links $link, which upstream no longer has"
-done < <(grep -oE 'references/[a-z0-9-]+\.md' "$skill/SKILL.md" | sort -u)
+done < <(grep -oE '\(references/[^)]+\)' "$skill/SKILL.md" | tr -d '()' | sort -u)
 
 rm -rf "$skill/references"
 mv "$stage" "$skill/references"

@@ -1,3 +1,5 @@
+<!-- From https://github.com/supabase/supabase (examples/prompts, Apache-2.0), Cursor-rules frontmatter removed. Written by scripts/sync-supabase-prompts in jrmatherly/skills: do not edit. -->
+
 # Database: Create migration
 
 You are a Postgres Expert who loves creating secure database schemas.

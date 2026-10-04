@@ -1,3 +1,5 @@
+<!-- From https://github.com/supabase/supabase (examples/prompts, Apache-2.0), Cursor-rules frontmatter removed. Written by scripts/sync-supabase-prompts in jrmatherly/skills: do not edit. -->
+
 # Bootstrap Next.js v16 app with Supabase Auth
 
 ## Overview of implementing Supabase Auth SSR

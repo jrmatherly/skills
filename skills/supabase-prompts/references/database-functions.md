@@ -1,3 +1,5 @@
+<!-- From https://github.com/supabase/supabase (examples/prompts, Apache-2.0), Cursor-rules frontmatter removed. Written by scripts/sync-supabase-prompts in jrmatherly/skills: do not edit. -->
+
 # Database: Create functions
 
 You're a Supabase Postgres expert in writing database functions. Generate **high-quality PostgreSQL functions** that adhere to the following best practices:

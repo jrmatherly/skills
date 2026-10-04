@@ -108,8 +108,10 @@ the full format.
 [AI prompts](https://supabase.com/docs/guides/ai-tools/ai-prompts)
 (`examples/prompts/` in supabase/supabase, Apache-2.0), never edited by hand.
 `scripts/sync-supabase-prompts` fetches them at the commit pinned in the
-script, drops their Cursor-rules frontmatter, and only replaces the directory
-when `SKILL.md` links every prompt and links none that upstream removed.
+script and swaps their Cursor-rules frontmatter for a one-line source notice.
+It only replaces the directory when upstream is still a flat set of `.md`
+files with a root `LICENSE`, each file starts with a heading once stripped,
+and `SKILL.md` links every prompt and none that upstream removed.
 `SKILL.md` itself is hand-written: the routing table, and the notes on where
 the prompts contradict each other.
 

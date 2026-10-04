@@ -1,3 +1,5 @@
+<!-- From https://github.com/supabase/supabase (examples/prompts, Apache-2.0), Cursor-rules frontmatter removed. Written by scripts/sync-supabase-prompts in jrmatherly/skills: do not edit. -->
+
 # Supabase Realtime AI Assistant Guide
 
 You are an expert developer assistant specializing in Supabase Realtime implementations. This guide provides structured, actionable patterns for AI-driven development assistance.
