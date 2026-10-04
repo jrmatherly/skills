@@ -1,0 +1,49 @@
+#!/bin/bash
+# Refresh skills/supabase-prompts/references from Supabase's published AI
+# prompts (supabase/supabase, examples/prompts) at the pinned commit. Never
+# edit the references by hand: the next sync overwrites them.
+set -euo pipefail
+
+# A full SHA: a short one can be shadowed by an upstream tag or branch of the
+# same name. To update, read `git log -p <old>..<new> -- examples/prompts`
+# upstream, change it here and re-run.
+commit=e357ec8f9f0b530304f99d9e30c9785f2511bee8
+repo=https://github.com/supabase/supabase
+path=examples/prompts
+
+skill="$(cd "$(dirname "$0")/.." && pwd -P)/skills/supabase-prompts"
+die() { echo "sync-supabase-prompts: $*" >&2; exit 1; }
+[[ $commit =~ ^[0-9a-f]{40}$ ]] || die "fetch: commit must be a full 40-character SHA"
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+
+# One commit, and only the blobs under the two sparse paths (the repo is large)
+git init -q "$work/src"
+git -C "$work/src" sparse-checkout set --no-cone "/$path/" /LICENSE
+git -C "$work/src" fetch -q --depth 1 --filter=blob:none "$repo" "$commit" || die "fetch: commit $commit not found"
+git -C "$work/src" checkout -q --detach FETCH_HEAD
+[ "$(git -C "$work/src" rev-parse HEAD)" = "$commit" ] || die "fetch: checked out something other than $commit"
+
+stage="$work/references"
+mkdir "$stage"
+for f in "$work/src/$path"/*.md; do
+  [ -f "$f" ] && [ ! -L "$f" ] || die "fetch: ${f##*/} is not a regular file"
+  # Drop the Cursor-rules frontmatter (description, alwaysApply): the table in
+  # SKILL.md does that job here
+  perl -0pe 's/\A---\n.*?\n---\n+//s' "$f" > "$stage/${f##*/}"
+done
+
+# SKILL.md is the only way in: an upstream prompt it doesn't link is never
+# read, and a link to one upstream removed is dead
+for f in "$stage"/*.md; do
+  grep -qF "(references/${f##*/})" "$skill/SKILL.md" \
+    || die "check: ${f##*/} is not linked from SKILL.md (a new upstream prompt needs a row)"
+done
+while read -r link; do
+  [ -f "$stage/${link#references/}" ] || die "check: SKILL.md links $link, which upstream no longer has"
+done < <(grep -oE 'references/[a-z0-9-]+\.md' "$skill/SKILL.md" | sort -u)
+
+rm -rf "$skill/references"
+mv "$stage" "$skill/references"
+cp "$work/src/LICENSE" "$skill/LICENSE"
+echo "sync-supabase-prompts: $(find "$skill/references" -name '*.md' | wc -l | tr -d ' ') prompts from $repo@$commit"

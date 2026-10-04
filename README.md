@@ -12,6 +12,7 @@ installs both and whose `agents/instructions.md` refers to these skills.
 | Skill | Use it for |
 | --- | --- |
 | [`coding-standards`](skills/coding-standards/SKILL.md) | Naming and comment conventions in any language, deferring to the codebase's existing style |
+| [`supabase-prompts`](skills/supabase-prompts/SKILL.md) | Supabase's published AI prompts (SQL style, migrations, declarative schemas, functions, RLS, Edge Functions, Next.js auth, Realtime), routed by task |
 
 ## Claude Code plugins
 
@@ -100,6 +101,22 @@ installed with `npx skills ls -g`.
 
 See the [Agent Skills specification](https://agentskills.io/specification) for
 the full format.
+
+## supabase-prompts: synced from upstream
+
+`skills/supabase-prompts/references/` and its `LICENSE` are Supabase's
+[AI prompts](https://supabase.com/docs/guides/ai-tools/ai-prompts)
+(`examples/prompts/` in supabase/supabase, Apache-2.0), never edited by hand.
+`scripts/sync-supabase-prompts` fetches them at the commit pinned in the
+script, drops their Cursor-rules frontmatter, and only replaces the directory
+when `SKILL.md` links every prompt and links none that upstream removed.
+`SKILL.md` itself is hand-written: the routing table, and the notes on where
+the prompts contradict each other.
+
+To update: read `git log -p <old>..<new> -- examples/prompts` upstream, set
+`commit=` in the script to the new full SHA, run it, review
+`git diff skills/supabase-prompts`, and re-check the "Where the prompts
+disagree" notes in `SKILL.md` against what changed.
 
 ## jstack: generated from upstream
 
