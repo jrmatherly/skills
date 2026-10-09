@@ -1,0 +1,5 @@
+# Claude Code writes the mod's TypeScript types here on each --plugin-dir load,
+# and a tsconfig.json at the mod root when the mod has none (create page,
+# "Get type definitions for your version")
+.claude-plugin/types/
+/tsconfig.json

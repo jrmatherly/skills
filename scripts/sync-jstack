@@ -84,6 +84,7 @@ cat > "$stage/.claude-plugin/plugin.json" << 'JSON'
   "name": "jstack",
   "description": "Jason's agent workflows: j-mode router, design and review panels, verification, principles. Fork of pstack by Lauren Tan (MIT).",
   "author": { "name": "Jason Matherly" },
+  "types": "./types/index.d.ts",
   "license": "MIT"
 }
 JSON

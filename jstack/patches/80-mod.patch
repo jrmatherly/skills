@@ -1,0 +1,387 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..6b066b9
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,5 @@
++# Claude Code writes the mod's TypeScript types here on each --plugin-dir load,
++# and a tsconfig.json at the mod root when the mod has none (create page,
++# "Get type definitions for your version")
++.claude-plugin/types/
++/tsconfig.json
+diff --git a/hooks/hooks.json b/hooks/hooks.json
+new file mode 100644
+index 0000000..5a63f64
+--- /dev/null
++++ b/hooks/hooks.json
+@@ -0,0 +1 @@
++{ "modules": ["./register.tsx"] }
+diff --git a/hooks/register.tsx b/hooks/register.tsx
+new file mode 100644
+index 0000000..66f7c9e
+--- /dev/null
++++ b/hooks/register.tsx
+@@ -0,0 +1,162 @@
++import { atom, read, update } from 'claude-code'
++import type { EngineInterface, Register } from 'claude-code'
++
++import type { Board, Step } from '../types'
++
++const board = atom({ plugin: 'jstack', key: 'board' } as const, null)
++const OPS = 'set (playbook, steps), done (index), skip (index, reason), add (text), show'
++const MARK = { todo: ' ', done: 'x', skip: '-' } as const
++const STATES = new Set(Object.keys(MARK))
++const NO_LIST = 'no list yet; call set first'
++type Op = { op: 'set'; playbook: string; steps: string[] } | { op: 'done' | 'skip'; index: number; reason?: string } | { op: 'add'; text: string } | { op: 'show' }
++function isStep(x: unknown): x is Step {
++  if (typeof x !== 'object' || x === null) return false
++  const s = x as Record<string, unknown>
++  return typeof s.text === 'string' && typeof s.state === 'string' && STATES.has(s.state) && (s.reason === undefined || typeof s.reason === 'string')
++}
++
++// The store outlives this code, so a record from an older build must read as empty
++function toBoard(x: unknown): Board | null {
++  if (typeof x !== 'object' || x === null) return null
++  const b = x as Record<string, unknown>
++  if (typeof b.playbook !== 'string' || !Array.isArray(b.steps) || !b.steps.every(isStep)) return null
++  return normalize(b.playbook, b.steps)
++}
++function normalize(playbook: string, steps: Step[]): Board {
++  const current = steps.findIndex(s => s.state === 'todo')
++  return { playbook, steps, current: current === -1 ? steps.length : current }
++}
++function show(b: Board): string {
++  const lines = b.steps.map((s, i) =>
++    `${i + 1}. [${MARK[s.state]}] ${s.text}${s.state === 'skip' && s.reason ? ` (skip: ${s.reason})` : ''}`)
++  return [b.playbook, ...lines].join('\n')
++}
++function rowText(b: Board, columns: number): string {
++  const done = b.steps.filter(s => s.state === 'done').length
++  const step = b.steps[b.current]
++  const text = step
++    ? `${b.playbook} · step ${b.current + 1}/${b.steps.length} · ${done} done: ${step.text}`
++    : `${b.playbook} · ${b.steps.length}/${b.steps.length} finished · ${done} done`
++  // Cut by code point, not UTF-16 unit, so a wide character is never split
++  return text.length > columns ? Array.from(text).slice(0, Math.max(0, columns - 1)).join('') + '…' : text
++}
++function parse(input: Record<string, unknown>, size: number): Op | string {
++  const str = (k: string) => (typeof input[k] === 'string' && (input[k] as string).trim()) || undefined
++  switch (input.op) {
++    case 'set': {
++      const playbook = str('playbook')
++      const steps = (Array.isArray(input.steps) ? input.steps : []).map(s => (typeof s === 'string' ? s.trim() : ''))
++      return playbook && steps.length && steps.every(s => s !== '')
++        ? { op: 'set', playbook, steps }
++        : 'set needs playbook (string) and steps (non-empty string array)'
++    }
++    case 'done':
++    case 'skip': {
++      if (size === 0) return NO_LIST
++      const index = Number(input.index)
++      if (!Number.isInteger(index) || index < 1 || index > size) return `${input.op} needs index between 1 and ${size}`
++      if (input.op === 'skip' && !str('reason')) return 'skip needs reason (string)'
++      return { op: input.op, index, reason: str('reason') }
++    }
++    case 'add': {
++      if (size === 0) return NO_LIST
++      const text = str('text')
++      return text ? { op: 'add', text } : 'add needs text (string)'
++    }
++    case 'show':
++      return size === 0 ? NO_LIST : { op: 'show' }
++    default:
++      return `unknown op ${JSON.stringify(input.op)}; valid ops: ${OPS}`
++  }
++}
++function apply(prev: Board | null, op: Op): Board | null {
++  if (op.op === 'set') return normalize(op.playbook, op.steps.map(text => ({ text, state: 'todo' as const })))
++  if (!prev || op.op === 'show') return prev
++  if (op.op === 'add') return normalize(prev.playbook, [...prev.steps, { text: op.text, state: 'todo' }])
++  const steps = prev.steps.map((s, i) => (i === op.index - 1 ? { ...s, state: op.op, reason: op.reason } : s))
++  return normalize(prev.playbook, steps)
++}
++const key = async ($: EngineInterface) => `steps:${await $.session.id()}`
++async function save($: EngineInterface, b: Board): Promise<void> {
++  await $.store.set(await key($), b)
++}
++async function load($: EngineInterface): Promise<void> {
++  const raw = await $.store.get(await key($))
++  await update($, board, () => toBoard(raw))
++}
++
++export const register: Register = on => {
++  on('session.start', async ($, e, next) => {
++    await $.tool.register({
++      name: 'step',
++      description:
++        'Mirror the j-mode playbook todolist into the band above the prompt. Call with op "set" (playbook, steps) when you open the todolist, ' +
++        'then "done" (index) or "skip" (index, reason) per step, "add" (text) for a new step, "show" to print it. Indexes start at 1. No model call, nothing runs.',
++      inputSchema: {
++        type: 'object',
++        required: ['op'],
++        properties: {
++          op: { type: 'string', enum: ['set', 'done', 'skip', 'add', 'show'] },
++          playbook: { type: 'string', description: 'The playbook name, for set.' },
++          steps: { type: 'array', items: { type: 'string' }, description: 'The step texts in order, for set.' },
++          index: { type: 'integer', minimum: 1, description: 'The step number, for done and skip.' },
++          reason: { type: 'string', description: 'Why the step is skipped, for skip.' },
++          text: { type: 'string', description: 'The new step, for add.' },
++        },
++      },
++      isDeferred: false,
++    })
++    return next(e)
++  }).catch(($, e, next) => next(e))
++
++  // Reload on every start: a resume keeps the session id and finds its record;
++  // /clear and /branch start a new id with none, so the band empties by construction
++  on('classic.SessionStart', async ($, e, next) => {
++    await load($)
++    return next(e)
++  }).catch(($, e, next) => next(e))
++
++  on('tool.call', { tool: 'mcp__jstack__step' }, async ($, e) => {
++    if (e.agentId !== undefined) return { result: 'step: ignored; the band shows the main session only, keep your own todolist' }
++    // The tool's arguments arrive flat on the event beside `tool`, so the event is the input
++    const input = e as unknown as Record<string, unknown>
++    // Parse and apply inside the updater, so two calls in one turn both land
++    const out: { refusal: string | null } = { refusal: null }
++    const after = await update($, board, prev => {
++      // update reruns this on a version miss, so a refusal from the first pass must not survive
++      out.refusal = null
++      const op = parse(input, prev?.steps.length ?? 0)
++      if (typeof op === 'string') {
++        out.refusal = op
++        return prev ?? null
++      }
++      return apply(prev ?? null, op)
++    })
++    if (out.refusal !== null) return { result: `step: ${out.refusal}` }
++    // The atom is the truth within a session; a failed store write must not report the change as failed
++    if (after) await save($, after).catch(() => undefined)
++    return { result: after ? show(after) : `step: ${NO_LIST}` }
++  }).catch(($, e, next) => ({ result: `step: the tool failed (${next.error.kind}); call show to read the list` }))
++
++  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
++    if (e.props.hasSurvey) return next(e)
++    const b = await read($, board)
++    if (!b || b.steps.length === 0) return next(e)
++    const { Box, Text } = $.ui.resolve(e)
++    const below = await next(e)
++    return (
++      <Box flexDirection="column">
++        <Text color="suggestion" wrap="truncate-end">{rowText(b, e.props.bodyColumns)}</Text>
++        {below}
++      </Box>
++    )
++  }).catch(($, e, next) => next(e))
++
++  on('prompt.compose', async ($, e, next) => {
++    const composed = await next(e)
++    const b = await read($, board)
++    if (!b || b.steps.length === 0) return composed
++    const text = `The playbook todolist this session, as the jstack step band shows it:\n${show(b)}`
++    return { sections: [...composed.sections, { id: 'jstack:steps', text, scope: 'session' as const }] }
++  }).catch(($, e, next) => next(e))
++}
+diff --git a/skills/j-mode/SKILL.md b/skills/j-mode/SKILL.md
+index cdc90e9..0d709b7 100644
+--- a/skills/j-mode/SKILL.md
++++ b/skills/j-mode/SKILL.md
+@@ -120,7 +120,7 @@ Comments follow the same rule as the reply. Write them clean as you go. Keep a c
+ 
+ ## Playbooks
+ 
+-Open a todolist whose first items are the matched playbook's steps, copied in verbatim, before any task-specific todos. A step you choose not to do stays in the list with a one-line `skip: <reason>`. Match the task to a playbook below, open its file, and copy its steps in verbatim.
++Open a todolist whose first items are the matched playbook's steps, copied in verbatim, before any task-specific todos. A step you choose not to do stays in the list with a one-line `skip: <reason>`. Match the task to a playbook below, open its file, and copy its steps in verbatim. When the `mcp__jstack__step` tool is present, mirror the list into it. Call it with `op: "set"` (the playbook name and the step texts) as you open the todolist, then `done` or `skip` with the step number as you go, and `set` again after `/clear` or `/branch`, which empty the band. The todolist stays the record. The band is the operator's view.
+ 
+ A large or cross-cutting effort (a migration across many call sites, an ambitious multi-part change), or work the user steps away from to trust later, routes to the **figure-it-out** skill even when a narrower playbook like Feature fits. Use **figure-it-out** whenever no bundled playbook fits. It designs a bespoke, rigorous playbook for the task. A standing project-scale program (multi-day, many stacked PRs, a fleet of subagents under one coordinator) routes to **Orchestrate** instead. figure-it-out designs one bespoke run, orchestrate runs the program.
+ 
+diff --git a/tests/step-band.test.tsx b/tests/step-band.test.tsx
+new file mode 100644
+index 0000000..9ac395d
+--- /dev/null
++++ b/tests/step-band.test.tsx
+@@ -0,0 +1,167 @@
++import { expect, test } from 'claude-code/testing'
++import type { Engine } from 'claude-code/testing'
++import type { On, RenderPropsOf } from 'claude-code'
++
++const TOOL = 'mcp__jstack__step'
++const BAND: RenderPropsOf['AbovePrompt'] = { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {} }
++function world(on: On, saved = new Map<string, unknown>()) {
++  on('store.get', ($, e) => ({ value: saved.get(e.key) }))
++  on('store.set', ($, e) => { saved.set(e.key, e.value); return { value: undefined } })
++  on('session.id', () => ({ value: 'S1' }))
++  on('session.start', () => ({ cwd: '/work' }))
++  on('classic.SessionStart', () => ({}))
++  on('prompt.compose', () => ({ sections: [{ id: 'intro', text: 'engine', scope: 'shared' as const }] }))
++  on('ui.render', () => ({ type: 'Text', props: {}, children: ['below'] }))
++  return saved
++}
++
++const call = ($: Engine, input: Record<string, unknown>) => $.tool.call({ tool: TOOL, ...input })
++const mount = ($: Engine, surface: 'terminal' | 'desktop', props = BAND) =>
++  $.ui.mount({ plugin: 'jstack', surface, component: 'AbovePrompt', props })
++const set = ($: Engine) => call($, { op: 'set', playbook: 'Feature', steps: ['Name the shape', 'Write the test', 'Implement'] })
++test('session.start registers step upfront', async ($, on) => {
++  world(on)
++  const specs: unknown[] = []
++  on('tool.register', ($, e) => { specs.push(e); return { value: { tool: 'mcp__jstack__' + e.name } } })
++  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
++  expect(specs[0]).toMatchObject({ name: 'step', isDeferred: false })
++})
++test('set, done and skip draw the row on both surfaces and save the list', async ($, on) => {
++  const saved = world(on)
++  const first = await set($)
++  expect(first.result).toBe('Feature\n1. [ ] Name the shape\n2. [ ] Write the test\n3. [ ] Implement')
++  for (const surface of ['terminal', 'desktop'] as const) {
++    const ui = await mount($, surface)
++    expect(await ui.find({ type: 'Text', text: 'Feature · step 1/3 · 0 done: Name the shape' })).toBeDefined()
++    expect(await ui.find({ type: 'Text', text: 'below' })).toBeDefined()
++    await ui.unmount()
++  }
++  await call($, { op: 'done', index: 1 })
++  const skipped = await call($, { op: 'skip', index: 2, reason: 'covered by the existing suite' })
++  expect(skipped.result).toContain('2. [-] Write the test (skip: covered by the existing suite)')
++  const ui = await mount($, 'terminal')
++  expect(await ui.find({ type: 'Text', text: 'Feature · step 3/3 · 1 done: Implement' })).toBeDefined()
++  await ui.unmount()
++  expect(saved.get('steps:S1')).toMatchObject({ playbook: 'Feature', current: 2 })
++})
++test('parallel done calls both land', async ($, on) => {
++  world(on)
++  await set($)
++  await Promise.all([call($, { op: 'done', index: 1 }), call($, { op: 'done', index: 2 })])
++  expect((await call($, { op: 'show' })).result).toBe('Feature\n1. [x] Name the shape\n2. [x] Write the test\n3. [ ] Implement')
++})
++test('an empty list draws nothing and the band below stays', async ($, on) => {
++  world(on)
++  const ui = await mount($, 'terminal')
++  expect(await ui.find({ type: 'Text', text: /Feature/ })).toBeUndefined()
++  expect(await ui.find({ type: 'Text', text: 'below' })).toBeDefined()
++})
++test('a long row is cut to bodyColumns', async ($, on) => {
++  world(on)
++  await call($, { op: 'set', playbook: 'Feature', steps: ['x'.repeat(200)] })
++  const ui = await mount($, 'terminal', { ...BAND, bodyColumns: 40 })
++  const row = await ui.find({ type: 'Text', text: /^Feature/ })
++  expect(row?.text.length).toBe(40)
++})
++test('a bad op returns the help string', async ($, on) => {
++  world(on)
++  const out = await call($, { op: 'finish' })
++  expect(out.result).toBe('step: unknown op "finish"; valid ops: set (playbook, steps), done (index), skip (index, reason), add (text), show')
++})
++test('set with no usable steps is refused', async ($, on) => {
++  world(on)
++  await set($)
++  const refused = 'step: set needs playbook (string) and steps (non-empty string array)'
++  expect((await call($, { op: 'set', playbook: 'Bug fix', steps: [1, ''] })).result).toBe(refused)
++  expect((await call($, { op: 'set', playbook: 'Bug fix', steps: ['Reproduce', 1] })).result).toBe(refused)
++  expect((await call($, { op: 'show' })).result).toContain('Feature')
++})
++test('an index outside the list is refused and nothing changes', async ($, on) => {
++  world(on)
++  expect((await call($, { op: 'done', index: 1 })).result).toBe('step: no list yet; call set first')
++  await set($)
++  expect((await call($, { op: 'done', index: 7 })).result).toBe('step: done needs index between 1 and 3')
++  expect((await call($, { op: 'skip', index: 2 })).result).toBe('step: skip needs reason (string)')
++  expect((await call($, { op: 'show' })).result).toContain('1. [ ] Name the shape')
++})
++test('a subagent call never touches the main list', async ($, on) => {
++  world(on)
++  await set($)
++  const out = await call($, { op: 'done', index: 1, agentId: 'agent-7' })
++  expect(out.result).toBe('step: ignored; the band shows the main session only, keep your own todolist')
++  expect((await call($, { op: 'show' })).result).toContain('1. [ ] Name the shape')
++})
++test('the band yields to a survey', async ($, on) => {
++  world(on)
++  await set($)
++  const ui = await mount($, 'terminal', { ...BAND, hasSurvey: true })
++  expect(await ui.find({ type: 'Text', text: /Feature/ })).toBeUndefined()
++  expect(await ui.find({ type: 'Text', text: 'below' })).toBeDefined()
++})
++test('a valid store record comes back after a resume', async ($, on) => {
++  const record = { playbook: 'Bug fix', steps: [{ text: 'Reproduce', state: 'done' }, { text: 'Fix', state: 'todo' }], current: 1 }
++  world(on, new Map([['steps:S1', record]]))
++  await $.classic.SessionStart({ source: 'resume' })
++  const ui = await mount($, 'terminal')
++  expect(await ui.find({ type: 'Text', text: 'Bug fix · step 2/2 · 1 done: Fix' })).toBeDefined()
++})
++test('a bad store record after a resume draws nothing', async ($, on) => {
++  const saved = world(on, new Map<string, unknown>([['steps:S1', { playbook: 'Bug fix', steps: [{ text: 'Fix', state: 'later' }], current: 0 }]]))
++  await $.classic.SessionStart({ source: 'resume' })
++  let ui = await mount($, 'terminal')
++  expect(await ui.find({ type: 'Text', text: /Bug fix/ })).toBeUndefined()
++  expect(await ui.find({ type: 'Text', text: 'below' })).toBeDefined()
++  await ui.unmount()
++  saved.set('steps:S1', 'old-format')
++  await $.classic.SessionStart({ source: 'resume' })
++  ui = await mount($, 'terminal')
++  expect(await ui.find({ type: 'Text', text: /old-format|Bug fix/ })).toBeUndefined()
++  expect(await ui.find({ type: 'Text', text: 'below' })).toBeDefined()
++})
++test('add appends a step and moves current onto it', async ($, on) => {
++  world(on)
++  await call($, { op: 'set', playbook: 'Feature', steps: ['Only'] })
++  await call($, { op: 'done', index: 1 })
++  expect((await call($, { op: 'add', text: 'One more' })).result).toBe('Feature\n1. [x] Only\n2. [ ] One more')
++  const ui = await mount($, 'terminal')
++  expect(await ui.find({ type: 'Text', text: 'Feature · step 2/2 · 1 done: One more' })).toBeDefined()
++})
++test('a set and a done in one turn answer what they did', async ($, on) => {
++  world(on)
++  const [, done] = await Promise.all([set($), call($, { op: 'done', index: 1 })])
++  const shown = (await call($, { op: 'show' })).result as string
++  expect(shown.includes('1. [x] Name the shape')).toBe((done.result as string).includes('1. [x] Name the shape'))
++})
++test('a SessionStart with no record for the session empties the band', async ($, on) => {
++  const saved = world(on)
++  await set($)
++  saved.clear()
++  await $.classic.SessionStart({ source: 'clear' })
++  const ui = await mount($, 'terminal')
++  expect(await ui.find({ type: 'Text', text: /Feature/ })).toBeUndefined()
++  expect(await ui.find({ type: 'Text', text: 'below' })).toBeDefined()
++})
++test('a failing store write does not hide the change', async ($, on) => {
++  on('store.get', () => ({ value: undefined }))
++  on('store.set', () => { throw new Error('store full') })
++  on('session.id', () => ({ value: 'S1' }))
++  on('ui.render', () => ({ type: 'Text', props: {}, children: ['below'] }))
++  const out = await call($, { op: 'set', playbook: 'Feature', steps: ['Only'] })
++  expect(out.result).toBe('Feature\n1. [ ] Only')
++})
++test('a long row with wide characters is cut at a code point', async ($, on) => {
++  world(on)
++  await call($, { op: 'set', playbook: 'Feature', steps: ['🐛'.repeat(60)] })
++  const ui = await mount($, 'terminal', { ...BAND, bodyColumns: 31 })
++  const row = await ui.find({ type: 'Text', text: /^Feature/ })
++  expect(row?.text.endsWith('🐛…')).toBe(true)
++})
++test('prompt.compose appends one session section listing the steps', async ($, on) => {
++  world(on)
++  await set($)
++  await call($, { op: 'done', index: 1 })
++  const composed = await $.prompt.compose({ model: 'm', promptModel: 'm', surfaces: ['terminal'], tools: [], outputStyle: null, traits: [] })
++  const last = composed.sections[composed.sections.length - 1]
++  expect(last).toMatchObject({ id: 'jstack:steps', scope: 'session' })
++  expect(last?.text).toContain('1. [x] Name the shape')
++})
+diff --git a/types/index.d.ts b/types/index.d.ts
+new file mode 100644
+index 0000000..0b7920e
+--- /dev/null
++++ b/types/index.d.ts
+@@ -0,0 +1,9 @@
++export type StepState = 'todo' | 'done' | 'skip'
++export type Step = { text: string; state: StepState; reason?: string }
++export type Board = { playbook: string; steps: Step[]; current: number }
++
++declare module 'claude-code' {
++  interface PluginState {
++    jstack: { board: Board | null }
++  }
++}
