@@ -72,7 +72,11 @@ fi
 # claude plugin test runs every *.test.ts(x) under the dir, and upstream's bun:test files cannot load in its sandbox
 mkdir "$tsdir/mod"
 for d in .claude-plugin hooks types tests; do
-  [ -d "$dir/$d" ] && cp -R "$dir/$d" "$tsdir/mod/" || bad "$dir/$d: missing, the mod is incomplete"
+  if [ ! -d "$dir/$d" ]; then
+    bad "$dir/$d: missing, the mod is incomplete"
+  elif ! cp -R "$dir/$d" "$tsdir/mod/"; then
+    bad "$dir/$d: copy into $tsdir/mod failed"
+  fi
 done
 if [ "$fail" = 0 ]; then
   out=$(claude plugin test "$tsdir/mod" 2>&1) || bad "claude plugin test failed on $dir"$'\n'"$out"
