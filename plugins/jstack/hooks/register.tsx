@@ -37,8 +37,9 @@ function rowText(b: Board, columns: number): string {
   const text = step
     ? `${b.playbook} · step ${b.current + 1}/${b.steps.length} · ${done} done: ${step.text}`
     : `${b.playbook} · ${b.steps.length}/${b.steps.length} finished · ${done} done`
-  // Cut by code point, not UTF-16 unit, so a wide character is never split
-  return text.length > columns ? Array.from(text).slice(0, Math.max(0, columns - 1)).join('') + '…' : text
+  // Measure and cut by code point, not UTF-16 unit, so a wide character is never split
+  const cps = Array.from(text)
+  return cps.length > columns ? cps.slice(0, Math.max(0, columns - 1)).join('') + '…' : text
 }
 function parse(input: Record<string, unknown>, size: number): Op | string {
   const str = (k: string) => (typeof input[k] === 'string' && (input[k] as string).trim()) || undefined
@@ -109,9 +110,9 @@ export const register: Register = on => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
-  // Reload on every start: a resume keeps the session id and finds its record;
-  // /clear and /branch start a new id with none, so the band empties by construction
-  on('classic.SessionStart', async ($, e, next) => {
+  // These three reset $.state (interface page, "Keep state"); a compaction does not,
+  // and reloading there would put a stale store copy over the live list
+  on('classic.SessionStart', { source: ['clear', 'resume', 'fork'] }, async ($, e, next) => {
     await load($)
     return next(e)
   }).catch(($, e, next) => next(e))

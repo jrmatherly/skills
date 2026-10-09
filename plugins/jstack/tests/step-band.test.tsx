@@ -156,6 +156,22 @@ test('a long row with wide characters is cut at a code point', async ($, on) => 
   const row = await ui.find({ type: 'Text', text: /^Feature/ })
   expect(row?.text.endsWith('🐛…')).toBe(true)
 })
+test('a compaction keeps the live list over a stale store record', async ($, on) => {
+  const saved = world(on)
+  await set($)
+  await call($, { op: 'done', index: 1 })
+  saved.set('steps:S1', { playbook: 'Feature', steps: [{ text: 'Name the shape', state: 'todo' }], current: 0 })
+  await $.classic.SessionStart({ source: 'compact' })
+  const ui = await mount($, 'terminal')
+  expect(await ui.find({ type: 'Text', text: 'Feature · step 2/3 · 1 done: Write the test' })).toBeDefined()
+})
+test('a row that fits in bodyColumns code points is not cut', async ($, on) => {
+  world(on)
+  await call($, { op: 'set', playbook: 'F', steps: ['🐛'.repeat(7)] })
+  const ui = await mount($, 'terminal', { ...BAND, bodyColumns: 30 })
+  const row = await ui.find({ type: 'Text', text: /^F/ })
+  expect(row?.text).toBe('F · step 1/1 · 0 done: ' + '🐛'.repeat(7))
+})
 test('prompt.compose appends one session section listing the steps', async ($, on) => {
   world(on)
   await set($)

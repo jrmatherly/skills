@@ -18,10 +18,10 @@ index 0000000..5a63f64
 +{ "modules": ["./register.tsx"] }
 diff --git a/hooks/register.tsx b/hooks/register.tsx
 new file mode 100644
-index 0000000..66f7c9e
+index 0000000..80335ea
 --- /dev/null
 +++ b/hooks/register.tsx
-@@ -0,0 +1,162 @@
+@@ -0,0 +1,163 @@
 +import { atom, read, update } from 'claude-code'
 +import type { EngineInterface, Register } from 'claude-code'
 +
@@ -61,8 +61,9 @@ index 0000000..66f7c9e
 +  const text = step
 +    ? `${b.playbook} · step ${b.current + 1}/${b.steps.length} · ${done} done: ${step.text}`
 +    : `${b.playbook} · ${b.steps.length}/${b.steps.length} finished · ${done} done`
-+  // Cut by code point, not UTF-16 unit, so a wide character is never split
-+  return text.length > columns ? Array.from(text).slice(0, Math.max(0, columns - 1)).join('') + '…' : text
++  // Measure and cut by code point, not UTF-16 unit, so a wide character is never split
++  const cps = Array.from(text)
++  return cps.length > columns ? cps.slice(0, Math.max(0, columns - 1)).join('') + '…' : text
 +}
 +function parse(input: Record<string, unknown>, size: number): Op | string {
 +  const str = (k: string) => (typeof input[k] === 'string' && (input[k] as string).trim()) || undefined
@@ -133,9 +134,9 @@ index 0000000..66f7c9e
 +    return next(e)
 +  }).catch(($, e, next) => next(e))
 +
-+  // Reload on every start: a resume keeps the session id and finds its record;
-+  // /clear and /branch start a new id with none, so the band empties by construction
-+  on('classic.SessionStart', async ($, e, next) => {
++  // These three reset $.state (interface page, "Keep state"); a compaction does not,
++  // and reloading there would put a stale store copy over the live list
++  on('classic.SessionStart', { source: ['clear', 'resume', 'fork'] }, async ($, e, next) => {
 +    await load($)
 +    return next(e)
 +  }).catch(($, e, next) => next(e))
@@ -185,7 +186,7 @@ index 0000000..66f7c9e
 +  }).catch(($, e, next) => next(e))
 +}
 diff --git a/skills/j-mode/SKILL.md b/skills/j-mode/SKILL.md
-index cdc90e9..0d709b7 100644
+index cdc90e9..c0c3540 100644
 --- a/skills/j-mode/SKILL.md
 +++ b/skills/j-mode/SKILL.md
 @@ -120,7 +120,7 @@ Comments follow the same rule as the reply. Write them clean as you go. Keep a c
@@ -193,16 +194,16 @@ index cdc90e9..0d709b7 100644
  ## Playbooks
  
 -Open a todolist whose first items are the matched playbook's steps, copied in verbatim, before any task-specific todos. A step you choose not to do stays in the list with a one-line `skip: <reason>`. Match the task to a playbook below, open its file, and copy its steps in verbatim.
-+Open a todolist whose first items are the matched playbook's steps, copied in verbatim, before any task-specific todos. A step you choose not to do stays in the list with a one-line `skip: <reason>`. Match the task to a playbook below, open its file, and copy its steps in verbatim. When the `mcp__jstack__step` tool is present, mirror the list into it. Call it with `op: "set"` (the playbook name and the step texts) as you open the todolist, then `done` or `skip` with the step number as you go, and `set` again after `/clear` or `/branch`, which empty the band. The todolist stays the record. The band is the operator's view.
++Open a todolist whose first items are the matched playbook's steps, copied in verbatim, before any task-specific todos. A step you choose not to do stays in the list with a one-line `skip: <reason>`. Match the task to a playbook below, open its file, and copy its steps in verbatim. When the `mcp__jstack__step` tool is present and you are the main session, not a subagent, mirror the list into it. Call it with `op: "set"` (the playbook name and the step texts) as you open the todolist, then `done` or `skip` with the step number as you go, and `set` again after `/clear` or `/branch`, which empty the band. The todolist stays the record. The band is the operator's view.
  
  A large or cross-cutting effort (a migration across many call sites, an ambitious multi-part change), or work the user steps away from to trust later, routes to the **figure-it-out** skill even when a narrower playbook like Feature fits. Use **figure-it-out** whenever no bundled playbook fits. It designs a bespoke, rigorous playbook for the task. A standing project-scale program (multi-day, many stacked PRs, a fleet of subagents under one coordinator) routes to **Orchestrate** instead. figure-it-out designs one bespoke run, orchestrate runs the program.
  
 diff --git a/tests/step-band.test.tsx b/tests/step-band.test.tsx
 new file mode 100644
-index 0000000..9ac395d
+index 0000000..f1fa8a0
 --- /dev/null
 +++ b/tests/step-band.test.tsx
-@@ -0,0 +1,167 @@
+@@ -0,0 +1,183 @@
 +import { expect, test } from 'claude-code/testing'
 +import type { Engine } from 'claude-code/testing'
 +import type { On, RenderPropsOf } from 'claude-code'
@@ -360,6 +361,22 @@ index 0000000..9ac395d
 +  const ui = await mount($, 'terminal', { ...BAND, bodyColumns: 31 })
 +  const row = await ui.find({ type: 'Text', text: /^Feature/ })
 +  expect(row?.text.endsWith('🐛…')).toBe(true)
++})
++test('a compaction keeps the live list over a stale store record', async ($, on) => {
++  const saved = world(on)
++  await set($)
++  await call($, { op: 'done', index: 1 })
++  saved.set('steps:S1', { playbook: 'Feature', steps: [{ text: 'Name the shape', state: 'todo' }], current: 0 })
++  await $.classic.SessionStart({ source: 'compact' })
++  const ui = await mount($, 'terminal')
++  expect(await ui.find({ type: 'Text', text: 'Feature · step 2/3 · 1 done: Write the test' })).toBeDefined()
++})
++test('a row that fits in bodyColumns code points is not cut', async ($, on) => {
++  world(on)
++  await call($, { op: 'set', playbook: 'F', steps: ['🐛'.repeat(7)] })
++  const ui = await mount($, 'terminal', { ...BAND, bodyColumns: 30 })
++  const row = await ui.find({ type: 'Text', text: /^F/ })
++  expect(row?.text).toBe('F · step 1/1 · 0 done: ' + '🐛'.repeat(7))
 +})
 +test('prompt.compose appends one session section listing the steps', async ($, on) => {
 +  world(on)
