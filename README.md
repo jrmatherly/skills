@@ -70,6 +70,14 @@ claude plugin install jstack@jrmatherly-skills
 claude plugin install resume@jrmatherly-skills
 ```
 
+jstack ships a mod (a hooks module) that draws the j-mode step band above
+the prompt. It needs Claude Code 2.1.293 or later and was tested on 2.1.295.
+`claude plugin validate plugins/jstack` lists what it can reach as
+`calls: $.session.id (via key), $.state.get, $.state.set, $.store.get (via
+load), $.store.set (via save), $.tool.register, $.ui.resolve`. No process,
+file, network or model calls. Its private tool `mcp__jstack__step` costs no
+model call.
+
 The plugins have no `version`, so updates follow this repo's commits:
 `claude plugin marketplace update jrmatherly-skills`.
 
@@ -128,7 +136,7 @@ agents and `LICENSE` (dropping `make-bot-ui`, which drives Cursor's hosted
 agents), applies `jstack/substitutions.tsv` (whole-word renames such as
 `poteto-mode` → `j-mode` and Cursor → Claude Code tool names), then
 `jstack/patches/*.patch` in order (`10-router`, `20-runtime`, `30-models`,
-`40-comments`, `50-skill-refs`, `60-safety`, `70-reflect`). It regenerates
+`40-comments`, `50-skill-refs`, `60-safety`, `70-reflect`, `80-mod`). It regenerates
 `bun.lock`, and only replaces `plugins/jstack/` when these pass:
 
 - `scripts/check-jstack`: no upstream names or Cursor-only references left,
@@ -139,6 +147,11 @@ agents), applies `jstack/substitutions.tsv` (whole-word renames such as
   upstream license notice is intact, and `claude plugin validate` passes
 - upstream's Bun tests (`bun test orch watch-pr`) and
   `jstack/tests/worktree-audit.sh`
+- `tsc --noEmit` over `hooks/`, `types/` and `tests/` against
+  `jstack/types/claude-code.d.ts`, then `claude plugin test` on a copy that
+  holds only the mod (neither `claude plugin validate` nor `claude plugin
+  test` type-checks, and the upstream `bun:test` files cannot load in the
+  test sandbox)
 
 Sync runs upstream code (Bun's install and tests), so it's fenced in: the pin
 must be a full 40-character SHA (a short one can be shadowed by an upstream tag
@@ -168,9 +181,13 @@ JSTACK_NO_CHECK=1 scripts/sync-jstack --out "$base"   # JSTACK_NO_CHECK: skip ch
 cp -R "$base" "${base%-base}-edit"
 # …edit files under …/jstack-edit…
 (cd "$(dirname "$base")" && git diff --no-index jstack-base jstack-edit) \
-  | sed -E 's#^(---|\+\+\+) (a|b)/jstack-(base|edit)/#\1 \2/#; s#^diff --git a/jstack-base/(.*) b/jstack-edit/#diff --git a/\1 b/#' \
+  | sed -E 's#^(---|\+\+\+) (a|b)/jstack-(base|edit)/#\1 \2/#; s#^diff --git a/jstack-(base|edit)/(.*) b/jstack-(base|edit)/#diff --git a/\2 b/#' \
   > jstack/patches/NN-area.patch
 ```
+
+A new file diffs as `a/jstack-edit/… b/jstack-edit/…`. The second `sed`
+rule rewrites that header so `git apply` creates the file. Without it
+`git apply` stops with `inconsistent new filename`.
 
 Keep one area per patch, so an upstream change breaks one patch, not all.
 The exception is `NN-reflect`: learnings from a `/jstack:reflect` pass land
@@ -179,6 +196,13 @@ sync would discard them).
 `scripts/sync-jstack --no-patches --out DIR` gives the tree before any patch.
 A new substitution row can shift text a patch is anchored to: rebuild each
 patch against the new table rather than editing hunks by hand.
+
+### Refresh the mod types
+
+`jstack/types/claude-code.d.ts` is the mods API as the installed Claude Code
+declares it. After `claude update`, run `/plugin-authoring` once in a session,
+copy the `claude-code.d.ts` it names over this file and commit. `check-jstack`
+prints a one-line warning while the two versions differ.
 
 ### Attribution
 

@@ -4,7 +4,9 @@
 # skill names actually exists (most are disable-model-invocation, so a dangling
 # name can't fall back to the Skill tool).
 set -uo pipefail
-dir="${1:-$(cd "$(dirname "$0")/.." && pwd -P)/plugins/jstack}"
+root="$(cd "$(dirname "$0")/.." && pwd -P)"
+dir="${1:-$root/plugins/jstack}"
+dir="$(cd "$dir" 2> /dev/null && pwd -P)" || { echo "check-jstack: no such directory: ${1:-plugins/jstack}" >&2; exit 2; }
 fail=0
 bad() { echo "$*" >&2; fail=1; }
 
@@ -45,4 +47,34 @@ while IFS= read -r link; do bad "$link: symlink"; done < <(find "$dir" -type l)
 
 grep -q 'Copyright (c) 2026 Lauren Tan' "$dir/LICENSE" || bad "LICENSE: upstream notice missing"
 claude plugin validate "$dir" > /dev/null 2>&1 || bad "claude plugin validate $dir failed"
+# validate and test do not type-check (GitHub issue #99771), so tsc runs against a committed copy of the declarations
+types="$root/jstack/types/claude-code.d.ts"
+tsdir=$(mktemp -d)
+trap 'rm -rf "$tsdir"' EXIT
+if [ ! -f "$types" ]; then
+  bad "$types: missing (README, Refresh the mod types)"
+elif ! command -v tsc > /dev/null; then
+  bad "tsc: not found (mise install npm:typescript)"
+else
+  built=$(sed -n '1s/.*Claude Code \([0-9][0-9.]*[0-9]\).*/\1/p' "$types")
+  have=$(claude --version | cut -d' ' -f1)
+  [ "$built" = "$have" ] || echo "check-jstack: jstack/types/claude-code.d.ts is from $built, claude is $have" >&2
+  cat > "$tsdir/tsconfig.json" << JSON
+{
+  "compilerOptions": { "target": "es2023", "lib": ["es2023"], "types": [], "module": "esnext", "moduleResolution": "bundler",
+    "strict": true, "noUncheckedIndexedAccess": true, "noEmit": true, "skipLibCheck": true,
+    "jsx": "react", "jsxFactory": "h", "jsxFragmentFactory": "Fragment" },
+  "include": ["$types", "$dir/hooks", "$dir/types", "$dir/tests"]
+}
+JSON
+  tsc -p "$tsdir/tsconfig.json" || bad "tsc: $dir does not type-check"
+fi
+# claude plugin test runs every *.test.ts(x) under the dir, and upstream's bun:test files cannot load in its sandbox
+mkdir "$tsdir/mod"
+for d in .claude-plugin hooks types tests; do
+  [ -d "$dir/$d" ] && cp -R "$dir/$d" "$tsdir/mod/" || bad "$dir/$d: missing, the mod is incomplete"
+done
+if [ "$fail" = 0 ]; then
+  out=$(claude plugin test "$tsdir/mod" 2>&1) || bad "claude plugin test failed on $dir"$'\n'"$out"
+fi
 exit $fail
