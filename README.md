@@ -75,8 +75,8 @@ the j-mode step row, then one line with the context fill (green, yellow
 from 60%, red from 85%), a Level menu for Ponytail, an Actions menu
 (Simplify, Review, Remember, and Check, which runs `pnpm check` in the
 session's folder when its `package.json` has a `check` script) and a More
-toggle. More adds the cost, tokens (in, out and cached apart), turns, agent
-time and the 5h and 7d quota with reset times. A separate row counts
+toggle. More adds stat tiles for the cost, tokens (in, out and cached
+apart), turns, agent time and the 5h and 7d quota with reset times. A separate row counts
 running and finished subagents and expands to one line per agent (type and
 model). The More and agents choices persist through `$.store`. The mobile
 app has no Select, so it gets no menus. It needs Claude Code 2.1.299 or

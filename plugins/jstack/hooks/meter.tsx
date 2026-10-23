@@ -27,7 +27,7 @@ const COMMANDS = [
   { value: 'review', label: 'Review', command: 'code-review' },
   { value: 'remember', label: 'Remember', command: 'remember:remember' },
 ]
-const WINDOW: Record<string, string> = { five_hour: '5h', seven_day: '7d' }
+const QUOTA: Record<string, string> = { five_hour: '5h quota', seven_day: '7d quota' }
 
 const short = (n: number) => (n < 1000 ? `${n}` : n < 1e6 ? `${(n / 1e3).toFixed(1)}k` : `${(n / 1e6).toFixed(1)}M`)
 function elapsed(ms: number): string {
@@ -141,14 +141,16 @@ export function registerMeter(on: On): void {
     const { Box, Text, Button } = elements
     // Mobile's table has no Select, so the menus are left out there
     const Select = 'Select' in elements ? elements.Select : null
-    const cells: { key: string; text: string; color?: 'error' | 'warning' }[] = [
-      { key: 'cost', text: m.costUsd === null ? 'cost n/a' : `cost $${m.costUsd.toFixed(2)}` },
-      { key: 'tokens', text: `tokens ${short(m.tokens.input + m.tokens.cacheWrite)} in · ${short(m.tokens.output)} out · ${short(m.tokens.cacheRead)} cached` },
-      { key: 'turns', text: `turns ${m.turns}` },
-      { key: 'time', text: `agent time ${elapsed(m.busyMs)}` },
+    const tiles: { key: string; label: string; value: string; sub?: string; color?: 'error' | 'warning'; isDim?: boolean }[] = [
+      { key: 'cost', label: 'cost', value: m.costUsd === null ? 'n/a' : `$${m.costUsd.toFixed(2)}`, isDim: m.costUsd === null },
+      { key: 'tokens', label: 'tokens', value: `${short(m.tokens.input + m.tokens.cacheWrite)} in · ${short(m.tokens.output)} out`, sub: `${short(m.tokens.cacheRead)} cached` },
+      { key: 'turns', label: 'turns', value: `${m.turns}` },
+      { key: 'time', label: 'agent time', value: elapsed(m.busyMs) },
       ...m.limits.map(l => ({
         key: `limit-${l.kind}`,
-        text: `${WINDOW[l.kind] ?? l.kind} ${l.percentUsed}%${l.resetsAt ? ` ↻ ${clockTime(l.resetsAt)}` : ''}`,
+        label: QUOTA[l.kind] ?? l.kind,
+        value: `${l.percentUsed}%`,
+        sub: l.resetsAt ? `resets ${clockTime(l.resetsAt)}` : undefined,
         color: l.percentUsed >= 95 ? ('error' as const) : l.percentUsed >= 80 ? ('warning' as const) : undefined,
       })),
     ]
@@ -177,8 +179,14 @@ export function registerMeter(on: On): void {
         </Box>
         {m.details && (m.turns > 0 || m.costUsd !== null) ? (
           // No width: Desktop shrinks every cell of a sized row to an ellipsis, so the row wraps instead
-          <Box key="metrics" flexDirection="row" flexWrap="wrap" columnGap={2}>
-            {cells.map(c => <Text key={c.key} tabular wrap="truncate-end" color={c.color}>{c.text}</Text>)}
+          <Box key="metrics" flexDirection="row" flexWrap="wrap" columnGap={3} rowGap={1}>
+            {tiles.map(t => (
+              <Box key={`tile-${t.key}`} flexDirection="column">
+                <Text size="caption" dimColor>{t.label}</Text>
+                <Text weight="semibold" tabular color={t.color} dimColor={t.isDim}>{t.value}</Text>
+                {t.sub ? <Text size="caption" dimColor tabular>{t.sub}</Text> : null}
+              </Box>
+            ))}
           </Box>
         ) : null}
         {running.length + m.done > 0 ? (

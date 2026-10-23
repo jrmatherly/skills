@@ -46,6 +46,12 @@ const spawn = ($: Engine, subagentType = 'Explore') => $.agent.spawn({ subagentT
 const mount = ($: Engine, surface: 'terminal' | 'desktop' = 'terminal', props = BAND) =>
   $.ui.mount({ plugin: 'jstack', surface, component: 'AbovePrompt', props })
 
+type Node = { props: Record<string, unknown>; children: unknown[] }
+// A tile's lines (caption, value, optional sub) as drawn, in order
+async function tile(ui: { find: (q: { key: string }) => Promise<{ children: unknown[] } | undefined> }, name: string) {
+  const lines = ((await ui.find({ key: `tile-${name}` }))?.children ?? []) as Node[]
+  return { text: lines.map(l => l.children.join('')), props: lines.map(l => l.props) }
+}
 const PASS = { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false }
 
 test('collapsed by default: context, the two menus and More, no metrics', async ($, on) => {
@@ -70,10 +76,17 @@ test('More draws the metrics row, flips to Less and persists', async ($, on) => 
   await turn($)
   const ui = await mount($)
   await ui.press({ key: 'details' })
-  for (const text of ['cost $0.42', 'tokens 1.0k in · 200 out · 3.0k cached', 'turns 1', 'agent time 1m 5s', '7d 60%']) {
-    expect((await ui.find({ type: 'Text', text }))?.text).toBe(text)
-  }
-  expect(await ui.find({ type: 'Text', text: /^5h 12% ↻ \d{1,2}:40 [AP]M$/ })).toBeDefined()
+  const cost = await tile(ui, 'cost')
+  expect(cost.text).toEqual(['cost', '$0.42'])
+  expect(cost.props[0]?.dimColor).toBe(true)
+  expect(cost.props[1]?.weight).toBe('semibold')
+  expect((await tile(ui, 'tokens')).text).toEqual(['tokens', '1.0k in · 200 out', '3.0k cached'])
+  expect((await tile(ui, 'turns')).text).toEqual(['turns', '1'])
+  expect((await tile(ui, 'time')).text).toEqual(['agent time', '1m 5s'])
+  const [label, value, sub] = (await tile(ui, 'limit-five_hour')).text
+  expect([label, value]).toEqual(['5h quota', '12%'])
+  expect(sub).toMatch(/^resets \d{1,2}:40 [AP]M$/)
+  expect((await tile(ui, 'limit-seven_day')).text).toEqual(['7d quota', '60%'])
   expect((await ui.find({ key: 'details' }))?.props.label).toBe('Less')
   expect(saved.get('details')).toBe(true)
   await ui.unmount()
@@ -83,7 +96,7 @@ test('a stored details: true starts expanded', async ($, on) => {
   await start($)
   await turn($)
   const ui = await mount($)
-  expect(await ui.find({ type: 'Text', text: 'cost $0.42' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '$0.42' })).toBeDefined()
   expect((await ui.find({ key: 'details' }))?.props.label).toBe('Less')
 })
 test('context is warning from 60, error from 85, and n/a dim before a reading', async ($, on) => {
@@ -106,8 +119,8 @@ test('a limit at 96% draws in the error colour, 85% in warning', async ($, on) =
   await start($)
   await turn($)
   const ui = await mount($)
-  expect((await ui.find({ type: 'Text', text: '5h 96%' }))?.props.color).toBe('error')
-  expect((await ui.find({ type: 'Text', text: '7d 85%' }))?.props.color).toBe('warning')
+  expect((await ui.find({ type: 'Text', text: '96%' }))?.props.color).toBe('error')
+  expect((await ui.find({ type: 'Text', text: '85%' }))?.props.color).toBe('warning')
 })
 test('the Level menu runs Ponytail and the Actions menu runs its pick', async ($, on) => {
   const { ran } = world(on)
@@ -201,8 +214,10 @@ test('a /clear restarts the counters and keeps the menus and the details choice'
   await ui.unmount()
   await turn($)
   ui = await mount($)
-  expect(await ui.find({ type: 'Text', text: 'turns 1' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: 'cost n/a' })).toBeDefined()
+  expect((await tile(ui, 'turns')).text).toEqual(['turns', '1'])
+  const cost = await tile(ui, 'cost')
+  expect(cost.text).toEqual(['cost', 'n/a'])
+  expect(cost.props[1]?.dimColor).toBe(true)
 })
 test('a new SessionUsage.startedAt restarts the counters without a classic hook', async ($, on) => {
   const usage = { ...USAGE }
@@ -213,8 +228,8 @@ test('a new SessionUsage.startedAt restarts the counters without a classic hook'
   usage.startedAt = 99
   await turn($)
   const ui = await mount($)
-  expect(await ui.find({ type: 'Text', text: 'turns 1' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: 'tokens 1.0k in · 200 out · 3.0k cached' })).toBeDefined()
+  expect((await tile(ui, 'turns')).text).toEqual(['turns', '1'])
+  expect(await ui.find({ type: 'Text', text: '3.0k cached' })).toBeDefined()
 })
 test('the first startedAt reading keeps the agents spawned before it', async ($, on) => {
   world(on, { spawned: [{ model: 'opus', agentId: 'a1' }] })
@@ -253,6 +268,6 @@ test('the step row draws above the meter, and the band below comes last', async 
   const ui = await mount($)
   const drawn = JSON.stringify(await ui.drawn())
   const at = (text: string) => drawn.indexOf(text)
-  expect(at('Feature · step 1/1') >= 0 && at('Feature · step 1/1') < at('context 38%') && at('context 38%') < at('cost $0.42') && at('cost $0.42') < at('"below"')).toBe(true)
+  expect(at('Feature · step 1/1') >= 0 && at('Feature · step 1/1') < at('context 38%') && at('context 38%') < at('$0.42') && at('$0.42') < at('"below"')).toBe(true)
   await ui.unmount()
 })
