@@ -70,13 +70,20 @@ claude plugin install jstack@jrmatherly-skills
 claude plugin install resume@jrmatherly-skills
 ```
 
-jstack ships a mod (a hooks module) that draws the j-mode step band above
-the prompt. It needs Claude Code 2.1.293 or later and was tested on 2.1.295.
-`claude plugin validate plugins/jstack` lists what it can reach as
-`calls: $.session.id (via key), $.state.get, $.state.set, $.store.get (via
-load), $.store.set (via save), $.tool.register, $.ui.resolve`. No process,
-file, network or model calls. Its private tool `mcp__jstack__step` costs no
-model call.
+jstack ships a mod (a hooks module) that draws a band above the prompt: the
+j-mode step row, then the session's cost, tokens, turns, agent time, context
+and rate-limit quota, the running subagents by model, and buttons for the
+Ponytail level, Simplify, Review, Check (`pnpm check` in the session's
+directory) and Remember. It needs Claude Code 2.1.299 or later (`Text
+tabular`) and was tested on 2.1.309. `claude plugin validate plugins/jstack`
+lists what it can reach as `calls: $.clock.now, $.command.list,
+$.command.run, $.env.get, $.fs.read, $.process.run, $.session.cwd,
+$.session.id, $.session.usage, $.state.get, $.state.set, $.store.get,
+$.store.set, $.tool.register, $.ui.resolve, $.ui.toast`. The only process it
+starts is `pnpm check`, on a button press; the only file it reads is
+Ponytail's `.ponytail-active` level flag; no network or model calls. Its
+private tool `mcp__jstack__step` costs no model call. A button whose slash
+command is not installed is not drawn.
 
 The plugins have no `version`, so updates follow this repo's commits:
 `claude plugin marketplace update jrmatherly-skills`.
@@ -136,7 +143,7 @@ agents and `LICENSE` (dropping `make-bot-ui`, which drives Cursor's hosted
 agents), applies `jstack/substitutions.tsv` (whole-word renames such as
 `poteto-mode` → `j-mode` and Cursor → Claude Code tool names), then
 `jstack/patches/*.patch` in order (`10-router`, `20-runtime`, `30-models`,
-`40-comments`, `50-skill-refs`, `60-safety`, `70-reflect`, `80-mod`). It regenerates
+`40-comments`, `50-skill-refs`, `60-safety`, `70-reflect`, `80-mod`, `90-band`). It regenerates
 `bun.lock`, and only replaces `plugins/jstack/` when these pass:
 
 - `scripts/check-jstack`: no upstream names or Cursor-only references left,

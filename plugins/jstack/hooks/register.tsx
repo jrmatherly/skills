@@ -2,6 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Board, Step } from '../types'
+import { registerMeter, syncMeter } from './meter'
 
 const board = atom({ plugin: 'jstack', key: 'board' } as const, null)
 const OPS = 'set (playbook, steps), done (index), skip (index, reason), add (text), show'
@@ -107,6 +108,7 @@ export const register: Register = on => {
       },
       isDeferred: false,
     })
+    await syncMeter($, false)
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -114,6 +116,7 @@ export const register: Register = on => {
   // and reloading there would put a stale store copy over the live list
   on('classic.SessionStart', { source: ['clear', 'resume', 'fork'] }, async ($, e, next) => {
     await load($)
+    await syncMeter($, e.source === 'clear')
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -160,4 +163,6 @@ export const register: Register = on => {
     const text = `The playbook todolist this session, as the jstack step band shows it:\n${show(b)}`
     return { sections: [...composed.sections, { id: 'jstack:steps', text, scope: 'session' as const }] }
   }).catch(($, e, next) => next(e))
+
+  registerMeter(on)
 }
