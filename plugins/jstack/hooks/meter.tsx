@@ -4,8 +4,9 @@ import type { EngineInterface, On } from 'claude-code'
 import type { Meter } from '../types'
 
 const EMPTY: Meter = {
+  startedAt: null,
   costUsd: null,
-  tokens: { total: 0, output: 0 },
+  tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
   turns: 0,
   busyMs: 0,
   contextPercent: null,
@@ -40,8 +41,8 @@ function clockTime(iso: string): string {
   const h = d.getHours()
   return `${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
 }
-// `claude-opus-5-5` and the alias `opus` both read as `opus`
-const family = (model: string) => model.replace(/^claude-/, '').split('-')[0] ?? model
+// `claude-opus-5-5`, `us.anthropic.claude-opus-5-5-v1` and the alias `opus` all read as `opus`
+const family = (model: string) => model.replace(/^.*?claude-/, '').split('-')[0]!
 function agentsText(m: Meter): string {
   const counts = new Map<string, number>()
   for (const model of Object.values(m.running)) counts.set(family(model), (counts.get(family(model)) ?? 0) + 1)
@@ -65,12 +66,21 @@ async function hasCheckScript($: EngineInterface): Promise<boolean> {
     return false
   }
 }
+let checking = false
 async function check($: EngineInterface): Promise<void> {
+  if (checking) {
+    $.ui.toast('pnpm check is already running')
+    return
+  }
+  checking = true
   try {
     const r = await $.process.run(['pnpm', 'check'], { cwd: await $.session.cwd(), timeoutMs: 300000 })
-    $.ui.toast(r.exitCode === 0 ? 'pnpm check passed' : `pnpm check failed: ${(r.stderr.trim() || r.stdout.trim()).slice(-200)}`)
+    // pnpm writes its script banner and ELIFECYCLE to stderr; the tool's own output is on stdout
+    $.ui.toast(r.exitCode === 0 ? 'pnpm check passed' : `pnpm check failed: ${(r.stdout.trim() || r.stderr.trim()).slice(-200)}`)
   } catch (err) {
     $.ui.toast(`pnpm check could not run: ${err instanceof Error ? err.message : String(err)}`)
+  } finally {
+    checking = false
   }
 }
 
@@ -88,10 +98,18 @@ export async function syncMeter($: EngineInterface, reset: boolean): Promise<voi
 export function registerMeter(on: On): void {
   on('turn.complete', async ($, e, next) => {
     const usage = e.agentId === undefined ? await $.session.usage().catch(() => null) : null
-    await update($, meter, m => {
+    await update($, meter, prev => {
+      // Only a change from a known value restarts: the first reading must not drop agents spawned in this turn
+      const restarted = usage !== null && typeof usage.startedAt === 'number' && prev.startedAt !== null && usage.startedAt !== prev.startedAt
+      const m = restarted ? { ...prev, tokens: EMPTY.tokens, turns: 0, busyMs: 0, running: {}, done: 0 } : prev
       const u = e.usage
       const tokens = u
-        ? { total: m.tokens.total + u.input_tokens + u.output_tokens + u.cache_read_input_tokens + u.cache_creation_input_tokens, output: m.tokens.output + u.output_tokens }
+        ? {
+            input: m.tokens.input + u.input_tokens,
+            output: m.tokens.output + u.output_tokens,
+            cacheRead: m.tokens.cacheRead + u.cache_read_input_tokens,
+            cacheWrite: m.tokens.cacheWrite + u.cache_creation_input_tokens,
+          }
         : m.tokens
       if (e.agentId !== undefined) {
         if (!(e.agentId in m.running)) return { ...m, tokens }
@@ -100,7 +118,7 @@ export function registerMeter(on: On): void {
       }
       const counted = { ...m, tokens, turns: m.turns + 1, busyMs: m.busyMs + e.durationMs }
       if (!usage) return counted
-      return { ...counted, costUsd: usage.cost?.usd ?? m.costUsd, contextPercent: usage.context.percent ?? m.contextPercent, limits: usage.rateLimits }
+      return { ...counted, startedAt: usage.startedAt, costUsd: usage.cost?.usd ?? m.costUsd, contextPercent: usage.context.percent ?? m.contextPercent, limits: usage.rateLimits }
     })
     return next(e)
   }).catch(($, e, next) => next(e))
@@ -121,7 +139,7 @@ export function registerMeter(on: On): void {
     const { Box, Text, Button } = $.ui.resolve(e)
     const cells: { key: string; text: string; color?: 'error' | 'warning' }[] = [
       { key: 'cost', text: m.costUsd === null ? 'cost n/a' : `cost $${m.costUsd.toFixed(2)}` },
-      { key: 'tokens', text: `tokens ${short(m.tokens.total)} · ${short(m.tokens.output)} out` },
+      { key: 'tokens', text: `tokens ${short(m.tokens.input + m.tokens.cacheWrite)} in · ${short(m.tokens.output)} out · ${short(m.tokens.cacheRead)} cached` },
       { key: 'turns', text: `turns ${m.turns}` },
       { key: 'time', text: `agent time ${elapsed(m.busyMs)}` },
       ...(m.contextPercent === null ? [] : [{ key: 'context', text: `context ${Math.round(m.contextPercent)}%` }]),
@@ -138,10 +156,11 @@ export function registerMeter(on: On): void {
     ]
     const running = Object.keys(m.running).length
     return (
-      // The engine's own tree (`below`) refuses to sit under a Box with `width`, so only our rows get one
+      // The engine's own tree (`below`) refuses to sit under a Box with `width`, so the root has none
       <Box flexDirection="column">
         {m.turns > 0 || m.costUsd !== null ? (
-          <Box flexDirection="row" gap={2} width={e.props.bodyColumns}>
+          // No width: Desktop shrinks every cell of a sized row to an ellipsis, so the row wraps instead
+          <Box key="metrics" flexDirection="row" flexWrap="wrap" columnGap={2}>
             {cells.map(c => <Text key={c.key} tabular wrap="truncate-end" color={c.color}>{c.text}</Text>)}
           </Box>
         ) : null}

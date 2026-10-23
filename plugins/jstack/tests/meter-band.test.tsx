@@ -50,7 +50,7 @@ test('one turn draws the metrics row on both surfaces above the band below', asy
   await turn($)
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await mount($, surface)
-    for (const text of ['cost $0.42', 'tokens 4.2k · 200 out', 'turns 1', 'agent time 1m 5s', 'context 38%', '7d 60%']) {
+    for (const text of ['cost $0.42', 'tokens 1.0k in · 200 out · 3.0k cached', 'turns 1', 'agent time 1m 5s', 'context 38%', '7d 60%']) {
       expect((await ui.find({ type: 'Text', text }))?.text).toBe(text)
     }
     expect((await ui.find({ type: 'Text', text: /^5h 12% ↻ \d{1,2}:40 [AP]M$/ }))).toBeDefined()
@@ -59,7 +59,7 @@ test('one turn draws the metrics row on both surfaces above the band below', asy
   }
 })
 test('spawned agents are grouped by model and a finished one counts as done', async ($, on) => {
-  world(on, { spawned: [{ model: 'claude-opus-5-5', agentId: 'a1' }, { model: 'sonnet', agentId: 'a2' }, { model: 'claude-sonnet-5', agentId: 'a3' }, { model: 'claude-opus-5-5', agentId: 'a1' }] })
+  world(on, { spawned: [{ model: 'claude-opus-5-5', agentId: 'a1' }, { model: 'sonnet', agentId: 'a2' }, { model: 'us.anthropic.claude-sonnet-5-v1', agentId: 'a3' }, { model: 'claude-opus-5-5', agentId: 'a1' }] })
   await start($)
   await spawn($, 'Explore')
   await spawn($, 'Explore')
@@ -84,13 +84,32 @@ test('a limit at 96% draws in the error colour, 85% in warning', async ($, on) =
 })
 test('Check toasts the tail of a failure and a pass', async ($, on) => {
   const { toasts } = world(on)
-  const results = [{ exitCode: 1, stdout: 'lint', stderr: 'boom\n', isStdoutTruncated: false, isStderrTruncated: false }, { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false }]
+  const results = [{ exitCode: 1, stdout: 'boom\n', stderr: 'ELIFECYCLE Command failed', isStdoutTruncated: false, isStderrTruncated: false }, { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false }]
   on('process.run', () => ({ value: results.shift()! }))
   await start($)
   const ui = await mount($)
   await ui.press({ key: 'check' })
   await ui.press({ key: 'check' })
   expect(toasts).toEqual(['pnpm check failed: boom', 'pnpm check passed'])
+})
+test('a second Check press while one runs starts nothing', async ($, on) => {
+  const { toasts } = world(on)
+  let finish: () => void = () => undefined
+  const gate = new Promise<void>(resolve => { finish = resolve })
+  let runs = 0
+  on('process.run', async () => {
+    runs++
+    await gate
+    return { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  await start($)
+  const ui = await mount($)
+  const first = ui.press({ key: 'check' })
+  await ui.press({ key: 'check' })
+  finish()
+  await first
+  expect(toasts).toEqual(['pnpm check is already running', 'pnpm check passed'])
+  expect(runs).toBe(1)
 })
 test('the level pills run Ponytail and mark the active level; the buttons run their commands', async ($, on) => {
   const { ran } = world(on)
@@ -155,6 +174,40 @@ test('a /clear restarts the counters and keeps the buttons', async ($, on) => {
   expect(await ui.find({ type: 'Text', text: 'turns 1' })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: 'cost n/a' })).toBeDefined()
 })
+test('a new SessionUsage.startedAt restarts the counters without a classic hook', async ($, on) => {
+  const usage = { ...USAGE }
+  world(on, { usage })
+  await start($)
+  await turn($)
+  await turn($)
+  usage.startedAt = 99
+  await turn($)
+  const ui = await mount($)
+  expect(await ui.find({ type: 'Text', text: 'turns 1' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'tokens 1.0k in · 200 out · 3.0k cached' })).toBeDefined()
+})
+test('the first startedAt reading keeps the agents spawned before it', async ($, on) => {
+  world(on, { spawned: [{ model: 'opus', agentId: 'a1' }] })
+  await start($)
+  await spawn($, 'Explore')
+  await turn($)
+  const ui = await mount($)
+  expect((await ui.find({ type: 'Text', text: /^agents/ }))?.text).toBe('agents · 1 running (opus) · 0 done')
+})
+test('the metrics row wraps with no width, and below sits directly under the root', async ($, on) => {
+  world(on)
+  await start($)
+  await turn($)
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await mount($, surface)
+    const metrics = await ui.find({ key: 'metrics' })
+    expect(metrics?.props.flexWrap).toBe('wrap')
+    expect('width' in (metrics?.props ?? { width: 0 })).toBe(false)
+    const root = JSON.parse(JSON.stringify(await ui.drawn())) as { children: { children?: unknown[] }[] }
+    expect(root.children.some(c => c.children?.[0] === 'below')).toBe(true)
+    await ui.unmount()
+  }
+})
 test('before the first turn only the buttons draw', async ($, on) => {
   world(on)
   await start($)
@@ -174,7 +227,9 @@ test('the step row draws above the meter, and the band below comes last', async 
   await start($)
   await turn($)
   await $.tool.call({ tool: 'mcp__jstack__step', op: 'set', playbook: 'Feature', steps: ['Name the shape'] })
-  const drawn = JSON.stringify(await (await mount($)).drawn())
+  const ui = await mount($)
+  const drawn = JSON.stringify(await ui.drawn())
   const at = (text: string) => drawn.indexOf(text)
   expect(at('Feature · step 1/1') >= 0 && at('Feature · step 1/1') < at('cost $0.42') && at('cost $0.42') < at('"below"')).toBe(true)
+  await ui.unmount()
 })

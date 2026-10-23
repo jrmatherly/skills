@@ -2,9 +2,11 @@ export type StepState = 'todo' | 'done' | 'skip'
 export type Step = { text: string; state: StepState; reason?: string }
 export type Board = { playbook: string; steps: Step[]; current: number }
 
-export type Tokens = { total: number; output: number }
+export type Tokens = { input: number; output: number; cacheRead: number; cacheWrite: number }
 export type Limit = { kind: string; percentUsed: number; resetsAt?: string }
 export type Meter = {
+  // SessionUsage.startedAt of the last main turn; a new value means the engine restarted the count
+  startedAt: number | null
   costUsd: number | null
   tokens: Tokens
   turns: number
