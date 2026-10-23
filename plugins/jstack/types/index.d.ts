@@ -19,6 +19,8 @@ export type Meter = {
   // Names from $.command.list(), so a button whose command is absent is hidden
   commands: string[]
   levelPath: string | null
+  // Ponytail's task board page, set when Ponytail is installed; its band module rebuilds the file after every turn
+  boardPath: string | null
   hasCheck: boolean
   // Persisted in $.store: the metrics row shown, and the running agents listed one per line
   details: boolean

@@ -15,6 +15,7 @@ const EMPTY: Meter = {
   done: 0,
   commands: [],
   levelPath: null,
+  boardPath: null,
   hasCheck: false,
   details: false,
   agentsOpen: false,
@@ -83,6 +84,16 @@ async function check($: EngineInterface): Promise<void> {
   }
 }
 
+async function openBoard($: EngineInterface, file: string): Promise<void> {
+  try {
+    // shortcut: macOS `open` only; add xdg-open and `cmd /c start` when the band runs elsewhere
+    const r = await $.process.run(['open', file])
+    if (r.exitCode !== 0) $.ui.toast(`could not open the board: ${r.stderr.trim().slice(-200) || file}`)
+  } catch (err) {
+    $.ui.toast(`could not open the board: ${err instanceof Error ? err.message : String(err)}`)
+  }
+}
+
 // register.tsx's session.start and SessionStart hooks call this, since a plugin may hook session.start once;
 // a /clear also restarts the counters, as SessionUsage.startedAt does
 export async function syncMeter($: EngineInterface, reset: boolean): Promise<void> {
@@ -90,10 +101,12 @@ export async function syncMeter($: EngineInterface, reset: boolean): Promise<voi
   const home = await $.env.get('HOME')
   const config = (await $.env.get('CLAUDE_CONFIG_DIR')) ?? (home ? `${home}/.claude` : null)
   const levelPath = config ? `${config}/.ponytail-active` : null
+  const xdg = (await $.env.get('XDG_CONFIG_HOME')) ?? (home ? `${home}/.config` : null)
+  const boardPath = xdg && commands.includes(PONYTAIL) ? `${xdg}/ponytail/band/board.html` : null
   const hasCheck = await hasCheckScript($)
   const details = (await $.store.get('details')) === true
   const agentsOpen = (await $.store.get('agentsOpen')) === true
-  await update($, meter, prev => ({ ...(reset ? EMPTY : prev), commands, levelPath, hasCheck, details, agentsOpen }))
+  await update($, meter, prev => ({ ...(reset ? EMPTY : prev), commands, levelPath, boardPath, hasCheck, details, agentsOpen }))
 }
 
 export function registerMeter(on: On): void {
@@ -154,8 +167,10 @@ export function registerMeter(on: On): void {
         color: l.percentUsed >= 95 ? ('error' as const) : l.percentUsed >= 80 ? ('warning' as const) : undefined,
       })),
     ]
+    const boardPath = m.boardPath
     const actions = [
       ...COMMANDS.filter(c => m.commands.includes(c.command)).map(c => ({ value: c.value, label: c.label, run: () => $.command.run({ command: c.command }) })),
+      ...(boardPath ? [{ value: 'board', label: 'Board', run: () => openBoard($, boardPath) }] : []),
       ...(m.hasCheck ? [{ value: 'check', label: 'Check', run: () => check($) }] : []),
     ]
     const running = Object.entries(m.running)

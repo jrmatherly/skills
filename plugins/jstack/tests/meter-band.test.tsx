@@ -64,7 +64,7 @@ test('collapsed by default: context, the two menus and More, no metrics', async 
     expect(await ui.find({ type: 'Text', text: /^cost/ })).toBeUndefined()
     expect((await ui.find({ key: 'level' }))?.props.value).toBe('full')
     const options = (await ui.find({ key: 'actions' }))?.props.options as { label: string }[]
-    expect(options.map(o => o.label)).toEqual(['…', 'Simplify', 'Review', 'Remember', 'Check'])
+    expect(options.map(o => o.label)).toEqual(['…', 'Simplify', 'Review', 'Remember', 'Board', 'Check'])
     expect((await ui.find({ key: 'details' }))?.props.label).toBe('More')
     expect(await ui.find({ type: 'Text', text: 'below' })).toBeDefined()
     await ui.unmount()
@@ -145,6 +145,19 @@ test('Check toasts the tail of a failure and a pass', async ($, on) => {
   await ui.select({ key: 'actions', value: 'check' })
   expect(toasts).toEqual(['pnpm check failed: boom', 'pnpm check passed'])
 })
+test("Board opens Ponytail's board page and toasts a failed open", async ($, on) => {
+  const { toasts } = world(on)
+  const opened: unknown[] = []
+  const results = [PASS, { ...PASS, exitCode: 1, stderr: 'no such file\n' }]
+  on('process.run', ($, e) => { opened.push(e.argv); return { value: results.shift()! } })
+  await start($)
+  const ui = await mount($)
+  await ui.select({ key: 'actions', value: 'board' })
+  await ui.select({ key: 'actions', value: 'board' })
+  const board = '/home/u/.config/ponytail/band/board.html'
+  expect(opened).toEqual([['open', board], ['open', board]])
+  expect(toasts).toEqual(['could not open the board: no such file'])
+})
 test('a command missing from command.list leaves its action out', async ($, on) => {
   world(on, { commands: ['code-review'] })
   await start($)
@@ -165,7 +178,7 @@ test('a package.json with other scripts but no check offers no Check', async ($,
   await start($)
   const ui = await mount($)
   const options = (await ui.find({ key: 'actions' }))?.props.options as { label: string }[]
-  expect(options.map(o => o.label)).toEqual(['…', 'Simplify', 'Review', 'Remember'])
+  expect(options.map(o => o.label)).toEqual(['…', 'Simplify', 'Review', 'Remember', 'Board'])
 })
 test('the agents row summarises, then lists type and model family and persists', async ($, on) => {
   const { saved } = world(on, { spawned: [{ model: 'us.anthropic.claude-opus-5-5-v1', agentId: 'a1' }, { model: 'sonnet', agentId: 'a2' }] })

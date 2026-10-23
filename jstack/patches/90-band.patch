@@ -1,9 +1,9 @@
 diff --git a/hooks/meter.tsx b/hooks/meter.tsx
 new file mode 100644
-index 0000000..b1fe470
+index 0000000..2d77810
 --- /dev/null
 +++ b/hooks/meter.tsx
-@@ -0,0 +1,211 @@
+@@ -0,0 +1,226 @@
 +import { atom, read, update } from 'claude-code'
 +import type { EngineInterface, On } from 'claude-code'
 +
@@ -21,6 +21,7 @@ index 0000000..b1fe470
 +  done: 0,
 +  commands: [],
 +  levelPath: null,
++  boardPath: null,
 +  hasCheck: false,
 +  details: false,
 +  agentsOpen: false,
@@ -89,6 +90,16 @@ index 0000000..b1fe470
 +  }
 +}
 +
++async function openBoard($: EngineInterface, file: string): Promise<void> {
++  try {
++    // shortcut: macOS `open` only; add xdg-open and `cmd /c start` when the band runs elsewhere
++    const r = await $.process.run(['open', file])
++    if (r.exitCode !== 0) $.ui.toast(`could not open the board: ${r.stderr.trim().slice(-200) || file}`)
++  } catch (err) {
++    $.ui.toast(`could not open the board: ${err instanceof Error ? err.message : String(err)}`)
++  }
++}
++
 +// register.tsx's session.start and SessionStart hooks call this, since a plugin may hook session.start once;
 +// a /clear also restarts the counters, as SessionUsage.startedAt does
 +export async function syncMeter($: EngineInterface, reset: boolean): Promise<void> {
@@ -96,10 +107,12 @@ index 0000000..b1fe470
 +  const home = await $.env.get('HOME')
 +  const config = (await $.env.get('CLAUDE_CONFIG_DIR')) ?? (home ? `${home}/.claude` : null)
 +  const levelPath = config ? `${config}/.ponytail-active` : null
++  const xdg = (await $.env.get('XDG_CONFIG_HOME')) ?? (home ? `${home}/.config` : null)
++  const boardPath = xdg && commands.includes(PONYTAIL) ? `${xdg}/ponytail/band/board.html` : null
 +  const hasCheck = await hasCheckScript($)
 +  const details = (await $.store.get('details')) === true
 +  const agentsOpen = (await $.store.get('agentsOpen')) === true
-+  await update($, meter, prev => ({ ...(reset ? EMPTY : prev), commands, levelPath, hasCheck, details, agentsOpen }))
++  await update($, meter, prev => ({ ...(reset ? EMPTY : prev), commands, levelPath, boardPath, hasCheck, details, agentsOpen }))
 +}
 +
 +export function registerMeter(on: On): void {
@@ -160,8 +173,10 @@ index 0000000..b1fe470
 +        color: l.percentUsed >= 95 ? ('error' as const) : l.percentUsed >= 80 ? ('warning' as const) : undefined,
 +      })),
 +    ]
++    const boardPath = m.boardPath
 +    const actions = [
 +      ...COMMANDS.filter(c => m.commands.includes(c.command)).map(c => ({ value: c.value, label: c.label, run: () => $.command.run({ command: c.command }) })),
++      ...(boardPath ? [{ value: 'board', label: 'Board', run: () => openBoard($, boardPath) }] : []),
 +      ...(m.hasCheck ? [{ value: 'check', label: 'Check', run: () => check($) }] : []),
 +    ]
 +    const running = Object.entries(m.running)
@@ -251,7 +266,7 @@ index 80335ea..a03f30f 100644
 +  registerMeter(on)
  }
 diff --git a/skills/j-mode/SKILL.md b/skills/j-mode/SKILL.md
-index c0c3540..abeacf8 100644
+index c0c3540..cfcbda9 100644
 --- a/skills/j-mode/SKILL.md
 +++ b/skills/j-mode/SKILL.md
 @@ -120,7 +120,7 @@ Comments follow the same rule as the reply. Write them clean as you go. Keep a c
@@ -259,16 +274,16 @@ index c0c3540..abeacf8 100644
  ## Playbooks
  
 -Open a todolist whose first items are the matched playbook's steps, copied in verbatim, before any task-specific todos. A step you choose not to do stays in the list with a one-line `skip: <reason>`. Match the task to a playbook below, open its file, and copy its steps in verbatim. When the `mcp__jstack__step` tool is present and you are the main session, not a subagent, mirror the list into it. Call it with `op: "set"` (the playbook name and the step texts) as you open the todolist, then `done` or `skip` with the step number as you go, and `set` again after `/clear` or `/branch`, which empty the band. The todolist stays the record. The band is the operator's view.
-+Open a todolist whose first items are the matched playbook's steps, copied in verbatim, before any task-specific todos. A step you choose not to do stays in the list with a one-line `skip: <reason>`. Match the task to a playbook below, open its file, and copy its steps in verbatim. When the `mcp__jstack__step` tool is present and you are the main session, not a subagent, mirror the list into it. Call it with `op: "set"` (the playbook name and the step texts) as you open the todolist, then `done` or `skip` with the step number as you go, and `set` again after `/clear` or `/branch`, which empty the band. The todolist stays the record. The band is the operator's view. Below the step row the band also shows the context fill, a Level menu for Ponytail, an Actions menu (Simplify, Review, Remember, Check for `pnpm check`), a More toggle for cost, tokens, turns, agent time and quota, and the running subagents, so don't restate those figures or explain the menus in the reply.
++Open a todolist whose first items are the matched playbook's steps, copied in verbatim, before any task-specific todos. A step you choose not to do stays in the list with a one-line `skip: <reason>`. Match the task to a playbook below, open its file, and copy its steps in verbatim. When the `mcp__jstack__step` tool is present and you are the main session, not a subagent, mirror the list into it. Call it with `op: "set"` (the playbook name and the step texts) as you open the todolist, then `done` or `skip` with the step number as you go, and `set` again after `/clear` or `/branch`, which empty the band. The todolist stays the record. The band is the operator's view. Below the step row the band also shows the context fill, a Level menu for Ponytail, an Actions menu (Simplify, Review, Remember, Board for Ponytail's task board, Check for `pnpm check`), a More toggle for cost, tokens, turns, agent time and quota, and the running subagents, so don't restate those figures or explain the menus in the reply.
  
  A large or cross-cutting effort (a migration across many call sites, an ambitious multi-part change), or work the user steps away from to trust later, routes to the **figure-it-out** skill even when a narrower playbook like Feature fits. Use **figure-it-out** whenever no bundled playbook fits. It designs a bespoke, rigorous playbook for the task. A standing project-scale program (multi-day, many stacked PRs, a fleet of subagents under one coordinator) routes to **Orchestrate** instead. figure-it-out designs one bespoke run, orchestrate runs the program.
  
 diff --git a/tests/meter-band.test.tsx b/tests/meter-band.test.tsx
 new file mode 100644
-index 0000000..c2eb243
+index 0000000..b9312bb
 --- /dev/null
 +++ b/tests/meter-band.test.tsx
-@@ -0,0 +1,273 @@
+@@ -0,0 +1,286 @@
 +import { expect, mock, test } from 'claude-code/testing'
 +import type { Engine } from 'claude-code/testing'
 +import type { On, RenderPropsOf, SessionUsage } from 'claude-code'
@@ -335,7 +350,7 @@ index 0000000..c2eb243
 +    expect(await ui.find({ type: 'Text', text: /^cost/ })).toBeUndefined()
 +    expect((await ui.find({ key: 'level' }))?.props.value).toBe('full')
 +    const options = (await ui.find({ key: 'actions' }))?.props.options as { label: string }[]
-+    expect(options.map(o => o.label)).toEqual(['…', 'Simplify', 'Review', 'Remember', 'Check'])
++    expect(options.map(o => o.label)).toEqual(['…', 'Simplify', 'Review', 'Remember', 'Board', 'Check'])
 +    expect((await ui.find({ key: 'details' }))?.props.label).toBe('More')
 +    expect(await ui.find({ type: 'Text', text: 'below' })).toBeDefined()
 +    await ui.unmount()
@@ -416,6 +431,19 @@ index 0000000..c2eb243
 +  await ui.select({ key: 'actions', value: 'check' })
 +  expect(toasts).toEqual(['pnpm check failed: boom', 'pnpm check passed'])
 +})
++test("Board opens Ponytail's board page and toasts a failed open", async ($, on) => {
++  const { toasts } = world(on)
++  const opened: unknown[] = []
++  const results = [PASS, { ...PASS, exitCode: 1, stderr: 'no such file\n' }]
++  on('process.run', ($, e) => { opened.push(e.argv); return { value: results.shift()! } })
++  await start($)
++  const ui = await mount($)
++  await ui.select({ key: 'actions', value: 'board' })
++  await ui.select({ key: 'actions', value: 'board' })
++  const board = '/home/u/.config/ponytail/band/board.html'
++  expect(opened).toEqual([['open', board], ['open', board]])
++  expect(toasts).toEqual(['could not open the board: no such file'])
++})
 +test('a command missing from command.list leaves its action out', async ($, on) => {
 +  world(on, { commands: ['code-review'] })
 +  await start($)
@@ -436,7 +464,7 @@ index 0000000..c2eb243
 +  await start($)
 +  const ui = await mount($)
 +  const options = (await ui.find({ key: 'actions' }))?.props.options as { label: string }[]
-+  expect(options.map(o => o.label)).toEqual(['…', 'Simplify', 'Review', 'Remember'])
++  expect(options.map(o => o.label)).toEqual(['…', 'Simplify', 'Review', 'Remember', 'Board'])
 +})
 +test('the agents row summarises, then lists type and model family and persists', async ($, on) => {
 +  const { saved } = world(on, { spawned: [{ model: 'us.anthropic.claude-opus-5-5-v1', agentId: 'a1' }, { model: 'sonnet', agentId: 'a2' }] })
@@ -543,10 +571,10 @@ index 0000000..c2eb243
 +  await ui.unmount()
 +})
 diff --git a/types/index.d.ts b/types/index.d.ts
-index 0b7920e..28f2005 100644
+index 0b7920e..288b6a0 100644
 --- a/types/index.d.ts
 +++ b/types/index.d.ts
-@@ -2,8 +2,31 @@ export type StepState = 'todo' | 'done' | 'skip'
+@@ -2,8 +2,33 @@ export type StepState = 'todo' | 'done' | 'skip'
  export type Step = { text: string; state: StepState; reason?: string }
  export type Board = { playbook: string; steps: Step[]; current: number }
  
@@ -567,6 +595,8 @@ index 0b7920e..28f2005 100644
 +  // Names from $.command.list(), so a button whose command is absent is hidden
 +  commands: string[]
 +  levelPath: string | null
++  // Ponytail's task board page, set when Ponytail is installed; its band module rebuilds the file after every turn
++  boardPath: string | null
 +  hasCheck: boolean
 +  // Persisted in $.store: the metrics row shown, and the running agents listed one per line
 +  details: boolean
