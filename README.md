@@ -70,22 +70,26 @@ claude plugin install jstack@jrmatherly-skills
 claude plugin install resume@jrmatherly-skills
 ```
 
-jstack ships a mod (a hooks module) that draws a band above the prompt: the
-j-mode step row, then the session's cost, tokens (in, out and cached apart),
-turns, agent time, context and rate-limit quota, the running subagents by
-model, and buttons for the
-Ponytail level, Simplify, Review, Check (`pnpm check` in the session's
-directory) and Remember. It needs Claude Code 2.1.299 or later (`Text
-tabular`) and was tested on 2.1.309. `claude plugin validate plugins/jstack`
-lists what it can reach as `calls: $.command.list, $.command.run,
-$.env.get, $.fs.read, $.process.run, $.session.cwd, $.session.id,
-$.session.usage, $.state.get, $.state.set, $.store.get, $.store.set,
-$.tool.register, $.ui.resolve, $.ui.toast`. The only process it starts is
-`pnpm check`, on a button press; the only files it reads are Ponytail's
-`.ponytail-active` level flag and the session folder's `package.json` (the
-Check button draws only where it has a `check` script); no network or model
-calls. Its private tool `mcp__jstack__step` costs no model call. A button
-whose slash command is not installed is not drawn.
+jstack ships a mod (a hooks module) that draws a band above the prompt:
+the j-mode step row, then one line with the context fill (green, yellow
+from 60%, red from 85%), a Level menu for Ponytail, an Actions menu
+(Simplify, Review, Remember, and Check, which runs `pnpm check` in the
+session's folder when its `package.json` has a `check` script) and a More
+toggle. More adds the cost, tokens (in, out and cached apart), turns, agent
+time and the 5h and 7d quota with reset times. A separate row counts
+running and finished subagents and expands to one line per agent (type and
+model). The More and agents choices persist through `$.store`. The mobile
+app has no Select, so it gets no menus. It needs Claude Code 2.1.299 or
+later (`Text tabular`) and was tested on 2.1.309. `claude plugin validate
+plugins/jstack` lists what it can reach as `calls: $.command.list,
+$.command.run, $.env.get, $.fs.read, $.process.run, $.session.cwd,
+$.session.id, $.session.usage, $.state.get, $.state.set, $.store.get,
+$.store.set, $.tool.register, $.ui.resolve, $.ui.toast`. The only process
+it starts is `pnpm check`, on a pick; the only files it reads are
+Ponytail's `.ponytail-active` level flag and the session folder's
+`package.json`; no network or model calls. Its private tool
+`mcp__jstack__step` costs no model call. A menu entry whose slash command
+is not installed is left out.
 
 The plugins have no `version`, so updates follow this repo's commits:
 `claude plugin marketplace update jrmatherly-skills`.

@@ -16,16 +16,17 @@ const EMPTY: Meter = {
   commands: [],
   levelPath: null,
   hasCheck: false,
+  details: false,
+  agentsOpen: false,
 }
 const meter = atom({ plugin: 'jstack', key: 'meter' } as const, EMPTY)
 const LEVELS = ['off', 'lite', 'full', 'ultra']
 const PONYTAIL = 'ponytail:ponytail'
 const COMMANDS = [
-  { key: 'simplify', label: 'Simplify', command: 'simplify' },
-  { key: 'review', label: 'Review', command: 'code-review' },
-  { key: 'remember', label: 'Remember', command: 'remember:remember' },
+  { value: 'simplify', label: 'Simplify', command: 'simplify' },
+  { value: 'review', label: 'Review', command: 'code-review' },
+  { value: 'remember', label: 'Remember', command: 'remember:remember' },
 ]
-const PLAIN = { plain: true as const }
 const WINDOW: Record<string, string> = { five_hour: '5h', seven_day: '7d' }
 
 const short = (n: number) => (n < 1000 ? `${n}` : n < 1e6 ? `${(n / 1e3).toFixed(1)}k` : `${(n / 1e6).toFixed(1)}M`)
@@ -43,12 +44,10 @@ function clockTime(iso: string): string {
 }
 // `claude-opus-5-5`, `us.anthropic.claude-opus-5-5-v1` and the alias `opus` all read as `opus`
 const family = (model: string) => model.replace(/^.*?claude-/, '').split('-')[0]!
-function agentsText(m: Meter): string {
-  const counts = new Map<string, number>()
-  for (const model of Object.values(m.running)) counts.set(family(model), (counts.get(family(model)) ?? 0) + 1)
-  const running = Object.keys(m.running).length
-  const models = [...counts].map(([f, n]) => (n > 1 ? `${f} ×${n}` : f)).join(', ')
-  return `agents · ${running} running${models ? ` (${models})` : ''} · ${m.done} done`
+const contextColor = (percent: number) => (percent >= 85 ? 'error' : percent >= 60 ? 'warning' : 'success')
+async function toggle($: EngineInterface, key: 'details' | 'agentsOpen'): Promise<void> {
+  const m = await update($, meter, prev => ({ ...prev, [key]: !prev[key] }))
+  await $.store.set(key, m[key])
 }
 async function readLevel($: EngineInterface, path: string): Promise<string> {
   try {
@@ -92,7 +91,9 @@ export async function syncMeter($: EngineInterface, reset: boolean): Promise<voi
   const config = (await $.env.get('CLAUDE_CONFIG_DIR')) ?? (home ? `${home}/.claude` : null)
   const levelPath = config ? `${config}/.ponytail-active` : null
   const hasCheck = await hasCheckScript($)
-  await update($, meter, prev => ({ ...(reset ? EMPTY : prev), commands, levelPath, hasCheck }))
+  const details = (await $.store.get('details')) === true
+  const agentsOpen = (await $.store.get('agentsOpen')) === true
+  await update($, meter, prev => ({ ...(reset ? EMPTY : prev), commands, levelPath, hasCheck, details, agentsOpen }))
 }
 
 export function registerMeter(on: On): void {
@@ -127,7 +128,7 @@ export function registerMeter(on: On): void {
     const r = await next(e)
     const { agentId } = r
     // A resumed agent was already counted done once; it is not a new run
-    if (agentId !== undefined && e.resume === undefined) await update($, meter, m => ({ ...m, running: { ...m.running, [agentId]: r.model } }))
+    if (agentId !== undefined && e.resume === undefined) await update($, meter, m => ({ ...m, running: { ...m.running, [agentId]: { model: r.model, type: e.subagentType } } }))
     return r
   }).catch(($, e, next) => next(e))
 
@@ -136,40 +137,63 @@ export function registerMeter(on: On): void {
     const m = await read($, meter)
     const ponytail = m.commands.includes(PONYTAIL)
     const [active, below] = await Promise.all([ponytail && m.levelPath ? readLevel($, m.levelPath) : null, next(e)])
-    const { Box, Text, Button } = $.ui.resolve(e)
+    const elements = $.ui.resolve(e)
+    const { Box, Text, Button } = elements
+    // Mobile's table has no Select, so the menus are left out there
+    const Select = 'Select' in elements ? elements.Select : null
     const cells: { key: string; text: string; color?: 'error' | 'warning' }[] = [
       { key: 'cost', text: m.costUsd === null ? 'cost n/a' : `cost $${m.costUsd.toFixed(2)}` },
       { key: 'tokens', text: `tokens ${short(m.tokens.input + m.tokens.cacheWrite)} in · ${short(m.tokens.output)} out · ${short(m.tokens.cacheRead)} cached` },
       { key: 'turns', text: `turns ${m.turns}` },
       { key: 'time', text: `agent time ${elapsed(m.busyMs)}` },
-      ...(m.contextPercent === null ? [] : [{ key: 'context', text: `context ${Math.round(m.contextPercent)}%` }]),
       ...m.limits.map(l => ({
         key: `limit-${l.kind}`,
         text: `${WINDOW[l.kind] ?? l.kind} ${l.percentUsed}%${l.resetsAt ? ` ↻ ${clockTime(l.resetsAt)}` : ''}`,
         color: l.percentUsed >= 95 ? ('error' as const) : l.percentUsed >= 80 ? ('warning' as const) : undefined,
       })),
     ]
-    const buttons = [
-      ...(ponytail ? LEVELS.map(l => ({ key: `level-${l}`, label: l, look: l === active ? { variant: 'primary' as const } : { ...PLAIN, dimColor: true }, onPress: () => $.command.run({ command: PONYTAIL, args: l }) })) : []),
-      ...COMMANDS.filter(c => m.commands.includes(c.command)).map(c => ({ key: c.key, label: c.label, look: PLAIN, onPress: () => $.command.run({ command: c.command }) })),
-      ...(m.hasCheck ? [{ key: 'check', label: 'Check', look: PLAIN, onPress: () => check($) }] : []),
+    const actions = [
+      ...COMMANDS.filter(c => m.commands.includes(c.command)).map(c => ({ value: c.value, label: c.label, run: () => $.command.run({ command: c.command }) })),
+      ...(m.hasCheck ? [{ value: 'check', label: 'Check', run: () => check($) }] : []),
     ]
-    const running = Object.keys(m.running).length
+    const running = Object.entries(m.running)
     return (
       // The engine's own tree (`below`) refuses to sit under a Box with `width`, so the root has none
       <Box flexDirection="column">
-        {m.turns > 0 || m.costUsd !== null ? (
+        <Box key="controls" flexDirection="row" flexWrap="wrap" columnGap={2}>
+          {m.contextPercent === null ? (
+            <Text key="context" dimColor>context n/a</Text>
+          ) : (
+            <Text key="context" tabular color={contextColor(m.contextPercent)}>{`context ${Math.round(m.contextPercent)}%`}</Text>
+          )}
+          {Select && ponytail ? (
+            <Select key="level" label="Level" options={LEVELS.map(l => ({ value: l, label: l }))} value={active ?? 'off'} onSelect={l => $.command.run({ command: PONYTAIL, args: l })} />
+          ) : null}
+          {Select && actions.length > 0 ? (
+            // value stays '' so the control reads as a menu; picking '…' does nothing
+            <Select key="actions" label="Actions" options={[{ value: '', label: '…' }, ...actions]} value="" onSelect={v => actions.find(a => a.value === v)?.run()} />
+          ) : null}
+          <Button key="details" plain label={m.details ? 'Less' : 'More'} onPress={() => toggle($, 'details')} />
+        </Box>
+        {m.details && (m.turns > 0 || m.costUsd !== null) ? (
           // No width: Desktop shrinks every cell of a sized row to an ellipsis, so the row wraps instead
           <Box key="metrics" flexDirection="row" flexWrap="wrap" columnGap={2}>
             {cells.map(c => <Text key={c.key} tabular wrap="truncate-end" color={c.color}>{c.text}</Text>)}
           </Box>
         ) : null}
-        {running + m.done > 0 ? <Text wrap="truncate-end">{agentsText(m)}</Text> : null}
-        {buttons.length > 0 ? (
-          <Box flexDirection="row" gap={1}>
-            {buttons.map(b => (
-              <Button key={b.key} label={b.label} {...b.look} onPress={b.onPress} />
-            ))}
+        {running.length + m.done > 0 ? (
+          <Box key="agents-row" flexDirection="column">
+            <Box flexDirection="row" columnGap={1}>
+              <Text wrap="truncate-end">{`agents · ${running.length} running · ${m.done} done`}</Text>
+              <Button key="agents" plain label={m.agentsOpen ? '▾' : '▸'} onPress={() => toggle($, 'agentsOpen')} />
+            </Box>
+            {m.agentsOpen
+              ? running.map(([id, a]) => (
+                  <Box key={`agent-${id}`} paddingLeft={2}>
+                    <Text wrap="truncate-end">{`${a.type} · ${family(a.model)}`}</Text>
+                  </Box>
+                ))
+              : null}
           </Box>
         ) : null}
         {below}

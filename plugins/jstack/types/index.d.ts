@@ -13,13 +13,16 @@ export type Meter = {
   busyMs: number
   contextPercent: number | null
   limits: Limit[]
-  // agentId to model, for the subagents still running
-  running: Record<string, string>
+  // agentId to model and agent type, for the subagents still running
+  running: Record<string, { model: string; type: string }>
   done: number
   // Names from $.command.list(), so a button whose command is absent is hidden
   commands: string[]
   levelPath: string | null
   hasCheck: boolean
+  // Persisted in $.store: the metrics row shown, and the running agents listed one per line
+  details: boolean
+  agentsOpen: boolean
 }
 
 declare module 'claude-code' {

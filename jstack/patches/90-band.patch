@@ -1,9 +1,9 @@
 diff --git a/hooks/meter.tsx b/hooks/meter.tsx
 new file mode 100644
-index 0000000..3c88a5a
+index 0000000..bd310e3
 --- /dev/null
 +++ b/hooks/meter.tsx
-@@ -0,0 +1,179 @@
+@@ -0,0 +1,203 @@
 +import { atom, read, update } from 'claude-code'
 +import type { EngineInterface, On } from 'claude-code'
 +
@@ -22,16 +22,17 @@ index 0000000..3c88a5a
 +  commands: [],
 +  levelPath: null,
 +  hasCheck: false,
++  details: false,
++  agentsOpen: false,
 +}
 +const meter = atom({ plugin: 'jstack', key: 'meter' } as const, EMPTY)
 +const LEVELS = ['off', 'lite', 'full', 'ultra']
 +const PONYTAIL = 'ponytail:ponytail'
 +const COMMANDS = [
-+  { key: 'simplify', label: 'Simplify', command: 'simplify' },
-+  { key: 'review', label: 'Review', command: 'code-review' },
-+  { key: 'remember', label: 'Remember', command: 'remember:remember' },
++  { value: 'simplify', label: 'Simplify', command: 'simplify' },
++  { value: 'review', label: 'Review', command: 'code-review' },
++  { value: 'remember', label: 'Remember', command: 'remember:remember' },
 +]
-+const PLAIN = { plain: true as const }
 +const WINDOW: Record<string, string> = { five_hour: '5h', seven_day: '7d' }
 +
 +const short = (n: number) => (n < 1000 ? `${n}` : n < 1e6 ? `${(n / 1e3).toFixed(1)}k` : `${(n / 1e6).toFixed(1)}M`)
@@ -49,12 +50,10 @@ index 0000000..3c88a5a
 +}
 +// `claude-opus-5-5`, `us.anthropic.claude-opus-5-5-v1` and the alias `opus` all read as `opus`
 +const family = (model: string) => model.replace(/^.*?claude-/, '').split('-')[0]!
-+function agentsText(m: Meter): string {
-+  const counts = new Map<string, number>()
-+  for (const model of Object.values(m.running)) counts.set(family(model), (counts.get(family(model)) ?? 0) + 1)
-+  const running = Object.keys(m.running).length
-+  const models = [...counts].map(([f, n]) => (n > 1 ? `${f} ×${n}` : f)).join(', ')
-+  return `agents · ${running} running${models ? ` (${models})` : ''} · ${m.done} done`
++const contextColor = (percent: number) => (percent >= 85 ? 'error' : percent >= 60 ? 'warning' : 'success')
++async function toggle($: EngineInterface, key: 'details' | 'agentsOpen'): Promise<void> {
++  const m = await update($, meter, prev => ({ ...prev, [key]: !prev[key] }))
++  await $.store.set(key, m[key])
 +}
 +async function readLevel($: EngineInterface, path: string): Promise<string> {
 +  try {
@@ -98,7 +97,9 @@ index 0000000..3c88a5a
 +  const config = (await $.env.get('CLAUDE_CONFIG_DIR')) ?? (home ? `${home}/.claude` : null)
 +  const levelPath = config ? `${config}/.ponytail-active` : null
 +  const hasCheck = await hasCheckScript($)
-+  await update($, meter, prev => ({ ...(reset ? EMPTY : prev), commands, levelPath, hasCheck }))
++  const details = (await $.store.get('details')) === true
++  const agentsOpen = (await $.store.get('agentsOpen')) === true
++  await update($, meter, prev => ({ ...(reset ? EMPTY : prev), commands, levelPath, hasCheck, details, agentsOpen }))
 +}
 +
 +export function registerMeter(on: On): void {
@@ -133,7 +134,7 @@ index 0000000..3c88a5a
 +    const r = await next(e)
 +    const { agentId } = r
 +    // A resumed agent was already counted done once; it is not a new run
-+    if (agentId !== undefined && e.resume === undefined) await update($, meter, m => ({ ...m, running: { ...m.running, [agentId]: r.model } }))
++    if (agentId !== undefined && e.resume === undefined) await update($, meter, m => ({ ...m, running: { ...m.running, [agentId]: { model: r.model, type: e.subagentType } } }))
 +    return r
 +  }).catch(($, e, next) => next(e))
 +
@@ -142,40 +143,63 @@ index 0000000..3c88a5a
 +    const m = await read($, meter)
 +    const ponytail = m.commands.includes(PONYTAIL)
 +    const [active, below] = await Promise.all([ponytail && m.levelPath ? readLevel($, m.levelPath) : null, next(e)])
-+    const { Box, Text, Button } = $.ui.resolve(e)
++    const elements = $.ui.resolve(e)
++    const { Box, Text, Button } = elements
++    // Mobile's table has no Select, so the menus are left out there
++    const Select = 'Select' in elements ? elements.Select : null
 +    const cells: { key: string; text: string; color?: 'error' | 'warning' }[] = [
 +      { key: 'cost', text: m.costUsd === null ? 'cost n/a' : `cost $${m.costUsd.toFixed(2)}` },
 +      { key: 'tokens', text: `tokens ${short(m.tokens.input + m.tokens.cacheWrite)} in · ${short(m.tokens.output)} out · ${short(m.tokens.cacheRead)} cached` },
 +      { key: 'turns', text: `turns ${m.turns}` },
 +      { key: 'time', text: `agent time ${elapsed(m.busyMs)}` },
-+      ...(m.contextPercent === null ? [] : [{ key: 'context', text: `context ${Math.round(m.contextPercent)}%` }]),
 +      ...m.limits.map(l => ({
 +        key: `limit-${l.kind}`,
 +        text: `${WINDOW[l.kind] ?? l.kind} ${l.percentUsed}%${l.resetsAt ? ` ↻ ${clockTime(l.resetsAt)}` : ''}`,
 +        color: l.percentUsed >= 95 ? ('error' as const) : l.percentUsed >= 80 ? ('warning' as const) : undefined,
 +      })),
 +    ]
-+    const buttons = [
-+      ...(ponytail ? LEVELS.map(l => ({ key: `level-${l}`, label: l, look: l === active ? { variant: 'primary' as const } : { ...PLAIN, dimColor: true }, onPress: () => $.command.run({ command: PONYTAIL, args: l }) })) : []),
-+      ...COMMANDS.filter(c => m.commands.includes(c.command)).map(c => ({ key: c.key, label: c.label, look: PLAIN, onPress: () => $.command.run({ command: c.command }) })),
-+      ...(m.hasCheck ? [{ key: 'check', label: 'Check', look: PLAIN, onPress: () => check($) }] : []),
++    const actions = [
++      ...COMMANDS.filter(c => m.commands.includes(c.command)).map(c => ({ value: c.value, label: c.label, run: () => $.command.run({ command: c.command }) })),
++      ...(m.hasCheck ? [{ value: 'check', label: 'Check', run: () => check($) }] : []),
 +    ]
-+    const running = Object.keys(m.running).length
++    const running = Object.entries(m.running)
 +    return (
 +      // The engine's own tree (`below`) refuses to sit under a Box with `width`, so the root has none
 +      <Box flexDirection="column">
-+        {m.turns > 0 || m.costUsd !== null ? (
++        <Box key="controls" flexDirection="row" flexWrap="wrap" columnGap={2}>
++          {m.contextPercent === null ? (
++            <Text key="context" dimColor>context n/a</Text>
++          ) : (
++            <Text key="context" tabular color={contextColor(m.contextPercent)}>{`context ${Math.round(m.contextPercent)}%`}</Text>
++          )}
++          {Select && ponytail ? (
++            <Select key="level" label="Level" options={LEVELS.map(l => ({ value: l, label: l }))} value={active ?? 'off'} onSelect={l => $.command.run({ command: PONYTAIL, args: l })} />
++          ) : null}
++          {Select && actions.length > 0 ? (
++            // value stays '' so the control reads as a menu; picking '…' does nothing
++            <Select key="actions" label="Actions" options={[{ value: '', label: '…' }, ...actions]} value="" onSelect={v => actions.find(a => a.value === v)?.run()} />
++          ) : null}
++          <Button key="details" plain label={m.details ? 'Less' : 'More'} onPress={() => toggle($, 'details')} />
++        </Box>
++        {m.details && (m.turns > 0 || m.costUsd !== null) ? (
 +          // No width: Desktop shrinks every cell of a sized row to an ellipsis, so the row wraps instead
 +          <Box key="metrics" flexDirection="row" flexWrap="wrap" columnGap={2}>
 +            {cells.map(c => <Text key={c.key} tabular wrap="truncate-end" color={c.color}>{c.text}</Text>)}
 +          </Box>
 +        ) : null}
-+        {running + m.done > 0 ? <Text wrap="truncate-end">{agentsText(m)}</Text> : null}
-+        {buttons.length > 0 ? (
-+          <Box flexDirection="row" gap={1}>
-+            {buttons.map(b => (
-+              <Button key={b.key} label={b.label} {...b.look} onPress={b.onPress} />
-+            ))}
++        {running.length + m.done > 0 ? (
++          <Box key="agents-row" flexDirection="column">
++            <Box flexDirection="row" columnGap={1}>
++              <Text wrap="truncate-end">{`agents · ${running.length} running · ${m.done} done`}</Text>
++              <Button key="agents" plain label={m.agentsOpen ? '▾' : '▸'} onPress={() => toggle($, 'agentsOpen')} />
++            </Box>
++            {m.agentsOpen
++              ? running.map(([id, a]) => (
++                  <Box key={`agent-${id}`} paddingLeft={2}>
++                    <Text wrap="truncate-end">{`${a.type} · ${family(a.model)}`}</Text>
++                  </Box>
++                ))
++              : null}
 +          </Box>
 +        ) : null}
 +        {below}
@@ -219,7 +243,7 @@ index 80335ea..a03f30f 100644
 +  registerMeter(on)
  }
 diff --git a/skills/j-mode/SKILL.md b/skills/j-mode/SKILL.md
-index c0c3540..bfea2e0 100644
+index c0c3540..abeacf8 100644
 --- a/skills/j-mode/SKILL.md
 +++ b/skills/j-mode/SKILL.md
 @@ -120,7 +120,7 @@ Comments follow the same rule as the reply. Write them clean as you go. Keep a c
@@ -227,16 +251,16 @@ index c0c3540..bfea2e0 100644
  ## Playbooks
  
 -Open a todolist whose first items are the matched playbook's steps, copied in verbatim, before any task-specific todos. A step you choose not to do stays in the list with a one-line `skip: <reason>`. Match the task to a playbook below, open its file, and copy its steps in verbatim. When the `mcp__jstack__step` tool is present and you are the main session, not a subagent, mirror the list into it. Call it with `op: "set"` (the playbook name and the step texts) as you open the todolist, then `done` or `skip` with the step number as you go, and `set` again after `/clear` or `/branch`, which empty the band. The todolist stays the record. The band is the operator's view.
-+Open a todolist whose first items are the matched playbook's steps, copied in verbatim, before any task-specific todos. A step you choose not to do stays in the list with a one-line `skip: <reason>`. Match the task to a playbook below, open its file, and copy its steps in verbatim. When the `mcp__jstack__step` tool is present and you are the main session, not a subagent, mirror the list into it. Call it with `op: "set"` (the playbook name and the step texts) as you open the todolist, then `done` or `skip` with the step number as you go, and `set` again after `/clear` or `/branch`, which empty the band. The todolist stays the record. The band is the operator's view. Below the step row the band also shows the session's cost, tokens, turns, agent time, context and quota, the running subagents, and buttons for the Ponytail level, Simplify, Review, Check (`pnpm check`) and Remember, so don't restate those figures or explain the buttons in the reply.
++Open a todolist whose first items are the matched playbook's steps, copied in verbatim, before any task-specific todos. A step you choose not to do stays in the list with a one-line `skip: <reason>`. Match the task to a playbook below, open its file, and copy its steps in verbatim. When the `mcp__jstack__step` tool is present and you are the main session, not a subagent, mirror the list into it. Call it with `op: "set"` (the playbook name and the step texts) as you open the todolist, then `done` or `skip` with the step number as you go, and `set` again after `/clear` or `/branch`, which empty the band. The todolist stays the record. The band is the operator's view. Below the step row the band also shows the context fill, a Level menu for Ponytail, an Actions menu (Simplify, Review, Remember, Check for `pnpm check`), a More toggle for cost, tokens, turns, agent time and quota, and the running subagents, so don't restate those figures or explain the menus in the reply.
  
  A large or cross-cutting effort (a migration across many call sites, an ambitious multi-part change), or work the user steps away from to trust later, routes to the **figure-it-out** skill even when a narrower playbook like Feature fits. Use **figure-it-out** whenever no bundled playbook fits. It designs a bespoke, rigorous playbook for the task. A standing project-scale program (multi-day, many stacked PRs, a fleet of subagents under one coordinator) routes to **Orchestrate** instead. figure-it-out designs one bespoke run, orchestrate runs the program.
  
 diff --git a/tests/meter-band.test.tsx b/tests/meter-band.test.tsx
 new file mode 100644
-index 0000000..b82d4d9
+index 0000000..f3e236a
 --- /dev/null
 +++ b/tests/meter-band.test.tsx
-@@ -0,0 +1,235 @@
+@@ -0,0 +1,258 @@
 +import { expect, mock, test } from 'claude-code/testing'
 +import type { Engine } from 'claude-code/testing'
 +import type { On, RenderPropsOf, SessionUsage } from 'claude-code'
@@ -249,7 +273,7 @@ index 0000000..b82d4d9
 +  rateLimits: [{ kind: 'five_hour', percentUsed: 12, resetsAt: '2026-10-22T15:40:00Z' }, { kind: 'seven_day', percentUsed: 60 }],
 +  cost: { usd: 0.42 },
 +}
-+type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string }
++type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean }
 +function world(on: On, w: World = {}) {
 +  const ran: unknown[] = []
 +  const toasts: string[] = []
@@ -257,7 +281,9 @@ index 0000000..b82d4d9
 +  const files: Record<string, string> = { '/home/u/.claude/.ponytail-active': 'full\n' }
 +  if (w.hasPackage !== false) files['/home/u/package.json'] = w.scripts ?? '{"scripts":{"check":"x"}}'
 +  mock.env(on, { HOME: '/home/u' })
-+  mock.store(on)
++  const saved = new Map<string, unknown>(w.details ? [['details', true]] : [])
++  on('store.get', ($, e) => ({ value: saved.get(e.key) }))
++  on('store.set', ($, e) => { saved.set(e.key, e.value); return { value: undefined } })
 +  // The step module's session.start and SessionStart hooks run first and need these
 +  on('session.id', () => ({ value: 'S1' }))
 +  on('tool.register', ($, e) => ({ value: { tool: 'mcp__jstack__' + e.name } }))
@@ -272,141 +298,169 @@ index 0000000..b82d4d9
 +  on('turn.complete', () => ({ text: '' }))
 +  on('ui.toast', ($, e) => { toasts.push(e.text); return { value: undefined } })
 +  on('ui.render', () => ({ type: 'Text', props: {}, children: ['below'] }))
-+  return { ran, toasts }
++  return { ran, toasts, saved }
 +}
 +
 +const start = ($: Engine) => $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/home/u' })
 +const USAGE_1 = { model: 'claude-opus-5-5', input_tokens: 1000, output_tokens: 200, cache_read_input_tokens: 3000, cache_creation_input_tokens: 0 }
 +const turn = ($: Engine, extra: Record<string, unknown> = {}) =>
 +  $.turn.complete({ answer: '', durationMs: 65000, isAborted: false, reason: 'answer', turnId: 't1', usage: USAGE_1, ...extra } as never)
-+const spawn = ($: Engine, subagentType: string) => $.agent.spawn({ subagentType, description: 'look', prompt: 'look', tool_use_id: 'tu', background: true, fork: false, parentModel: 'opus' } as never)
++const spawn = ($: Engine, subagentType = 'Explore') => $.agent.spawn({ subagentType, description: 'look', prompt: 'look', tool_use_id: 'tu', background: true, fork: false, parentModel: 'opus' } as never)
 +const mount = ($: Engine, surface: 'terminal' | 'desktop' = 'terminal', props = BAND) =>
 +  $.ui.mount({ plugin: 'jstack', surface, component: 'AbovePrompt', props })
 +
-+test('one turn draws the metrics row on both surfaces above the band below', async ($, on) => {
++const PASS = { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false }
++
++test('collapsed by default: context, the two menus and More, no metrics', async ($, on) => {
 +  world(on)
 +  await start($)
 +  await turn($)
 +  for (const surface of ['terminal', 'desktop'] as const) {
 +    const ui = await mount($, surface)
-+    for (const text of ['cost $0.42', 'tokens 1.0k in · 200 out · 3.0k cached', 'turns 1', 'agent time 1m 5s', 'context 38%', '7d 60%']) {
-+      expect((await ui.find({ type: 'Text', text }))?.text).toBe(text)
-+    }
-+    expect((await ui.find({ type: 'Text', text: /^5h 12% ↻ \d{1,2}:40 [AP]M$/ }))).toBeDefined()
++    expect((await ui.find({ type: 'Text', text: 'context 38%' }))?.props.color).toBe('success')
++    expect(await ui.find({ type: 'Text', text: /^cost/ })).toBeUndefined()
++    expect((await ui.find({ key: 'level' }))?.props.value).toBe('full')
++    const options = (await ui.find({ key: 'actions' }))?.props.options as { label: string }[]
++    expect(options.map(o => o.label)).toEqual(['…', 'Simplify', 'Review', 'Remember', 'Check'])
++    expect((await ui.find({ key: 'details' }))?.props.label).toBe('More')
 +    expect(await ui.find({ type: 'Text', text: 'below' })).toBeDefined()
 +    await ui.unmount()
 +  }
 +})
-+test('spawned agents are grouped by model and a finished one counts as done', async ($, on) => {
-+  world(on, { spawned: [{ model: 'claude-opus-5-5', agentId: 'a1' }, { model: 'sonnet', agentId: 'a2' }, { model: 'us.anthropic.claude-sonnet-5-v1', agentId: 'a3' }, { model: 'claude-opus-5-5', agentId: 'a1' }] })
++test('More draws the metrics row, flips to Less and persists', async ($, on) => {
++  const { saved } = world(on)
 +  await start($)
-+  await spawn($, 'Explore')
-+  await spawn($, 'Explore')
-+  await spawn($, 'Explore')
-+  await turn($, { agentId: 'a1' })
-+  await turn($, { agentId: 'a1' })
-+  // A resume of a1 is not a new run, so it neither runs nor finishes again
-+  await $.agent.spawn({ subagentType: 'Explore', description: 'again', prompt: 'more', tool_use_id: 'tu', background: true, fork: false, parentModel: 'opus', resume: { agentId: 'a1' } } as never)
-+  await turn($, { agentId: 'a1' })
++  await turn($)
 +  const ui = await mount($)
-+  expect((await ui.find({ type: 'Text', text: /^agents/ }))?.text).toBe('agents · 2 running (sonnet ×2) · 1 done')
-+  // Subagent turns count neither as turns nor read usage, so no metrics row yet
-+  expect(await ui.find({ type: 'Text', text: /^turns/ })).toBeUndefined()
++  await ui.press({ key: 'details' })
++  for (const text of ['cost $0.42', 'tokens 1.0k in · 200 out · 3.0k cached', 'turns 1', 'agent time 1m 5s', '7d 60%']) {
++    expect((await ui.find({ type: 'Text', text }))?.text).toBe(text)
++  }
++  expect(await ui.find({ type: 'Text', text: /^5h 12% ↻ \d{1,2}:40 [AP]M$/ })).toBeDefined()
++  expect((await ui.find({ key: 'details' }))?.props.label).toBe('Less')
++  expect(saved.get('details')).toBe(true)
++  await ui.unmount()
++})
++test('a stored details: true starts expanded', async ($, on) => {
++  world(on, { details: true })
++  await start($)
++  await turn($)
++  const ui = await mount($)
++  expect(await ui.find({ type: 'Text', text: 'cost $0.42' })).toBeDefined()
++  expect((await ui.find({ key: 'details' }))?.props.label).toBe('Less')
++})
++test('context is warning from 60, error from 85, and n/a dim before a reading', async ($, on) => {
++  const usage = { ...USAGE, context: { window: 200000 } as SessionUsage['context'] }
++  world(on, { usage })
++  await start($)
++  let ui = await mount($)
++  expect((await ui.find({ type: 'Text', text: 'context n/a' }))?.props.dimColor).toBe(true)
++  await ui.unmount()
++  for (const [percent, color] of [[70, 'warning'], [90, 'error']] as const) {
++    usage.context = { window: 200000, percent }
++    await turn($)
++    ui = await mount($)
++    expect((await ui.find({ type: 'Text', text: `context ${percent}%` }))?.props.color).toBe(color)
++    await ui.unmount()
++  }
 +})
 +test('a limit at 96% draws in the error colour, 85% in warning', async ($, on) => {
-+  world(on, { usage: { ...USAGE, rateLimits: [{ kind: 'five_hour', percentUsed: 96 }, { kind: 'seven_day', percentUsed: 85 }] } })
++  world(on, { details: true, usage: { ...USAGE, rateLimits: [{ kind: 'five_hour', percentUsed: 96 }, { kind: 'seven_day', percentUsed: 85 }] } })
 +  await start($)
 +  await turn($)
 +  const ui = await mount($)
 +  expect((await ui.find({ type: 'Text', text: '5h 96%' }))?.props.color).toBe('error')
 +  expect((await ui.find({ type: 'Text', text: '7d 85%' }))?.props.color).toBe('warning')
 +})
++test('the Level menu runs Ponytail and the Actions menu runs its pick', async ($, on) => {
++  const { ran } = world(on)
++  let checks = 0
++  on('process.run', () => { checks++; return { value: PASS } })
++  await start($)
++  const ui = await mount($)
++  await ui.select({ key: 'level', value: 'lite' })
++  await ui.select({ key: 'actions', value: 'simplify' })
++  await ui.select({ key: 'actions', value: '' })
++  await ui.select({ key: 'actions', value: 'check' })
++  expect(ran).toEqual([{ command: 'ponytail:ponytail', args: 'lite' }, { command: 'simplify', args: '' }])
++  expect(checks).toBe(1)
++})
 +test('Check toasts the tail of a failure and a pass', async ($, on) => {
 +  const { toasts } = world(on)
-+  const results = [{ exitCode: 1, stdout: 'boom\n', stderr: 'ELIFECYCLE Command failed', isStdoutTruncated: false, isStderrTruncated: false }, { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false }]
++  const results = [{ ...PASS, exitCode: 1, stdout: 'boom\n', stderr: 'ELIFECYCLE Command failed' }, PASS]
 +  on('process.run', () => ({ value: results.shift()! }))
 +  await start($)
 +  const ui = await mount($)
-+  await ui.press({ key: 'check' })
-+  await ui.press({ key: 'check' })
++  await ui.select({ key: 'actions', value: 'check' })
++  await ui.select({ key: 'actions', value: 'check' })
 +  expect(toasts).toEqual(['pnpm check failed: boom', 'pnpm check passed'])
 +})
-+test('a second Check press while one runs starts nothing', async ($, on) => {
-+  const { toasts } = world(on)
-+  let finish: () => void = () => undefined
-+  const gate = new Promise<void>(resolve => { finish = resolve })
-+  let runs = 0
-+  on('process.run', async () => {
-+    runs++
-+    await gate
-+    return { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
-+  })
++test('a command missing from command.list leaves its action out', async ($, on) => {
++  world(on, { commands: ['code-review'] })
 +  await start($)
 +  const ui = await mount($)
-+  const first = ui.press({ key: 'check' })
-+  await ui.press({ key: 'check' })
-+  finish()
-+  await first
-+  expect(toasts).toEqual(['pnpm check is already running', 'pnpm check passed'])
-+  expect(runs).toBe(1)
++  const options = (await ui.find({ key: 'actions' }))?.props.options as { label: string }[]
++  expect(options.map(o => o.label)).toEqual(['…', 'Review', 'Check'])
++  expect(await ui.find({ key: 'level' })).toBeUndefined()
 +})
-+test('the level pills run Ponytail and mark the active level; the buttons run their commands', async ($, on) => {
-+  const { ran } = world(on)
++test('with nothing to act on there is no Actions menu', async ($, on) => {
++  world(on, { commands: [], hasPackage: false })
 +  await start($)
 +  const ui = await mount($)
-+  expect((await ui.find({ key: 'level-full' }))?.props.variant).toBe('primary')
-+  expect((await ui.find({ key: 'level-lite' }))?.props.variant).toBeUndefined()
-+  await ui.press({ key: 'level-lite' })
-+  await ui.press({ key: 'simplify' })
-+  await ui.press({ key: 'review' })
-+  await ui.press({ key: 'remember' })
-+  expect(ran).toEqual([
-+    { command: 'ponytail:ponytail', args: 'lite' },
-+    { command: 'simplify', args: '' },
-+    { command: 'code-review', args: '' },
-+    { command: 'remember:remember', args: '' },
-+  ])
++  expect(await ui.find({ key: 'actions' })).toBeUndefined()
++  expect(await ui.find({ key: 'details' })).toBeDefined()
 +})
-+test('a command missing from command.list hides its button', async ($, on) => {
-+  world(on, { commands: ['code-review', 'remember:remember'] })
-+  await start($)
-+  const ui = await mount($)
-+  expect(await ui.find({ key: 'simplify' })).toBeUndefined()
-+  expect(await ui.find({ key: 'level-off' })).toBeUndefined()
-+  expect(await ui.find({ key: 'review' })).toBeDefined()
-+  expect(await ui.find({ key: 'check' })).toBeDefined()
-+})
-+test('without a check script in package.json there is no Check button', async ($, on) => {
-+  world(on, { hasPackage: false })
-+  await start($)
-+  let ui = await mount($)
-+  expect(await ui.find({ key: 'check' })).toBeUndefined()
-+  expect(await ui.find({ key: 'simplify' })).toBeDefined()
-+  await ui.unmount()
-+})
-+test('a package.json with other scripts but no check draws no Check button', async ($, on) => {
++test('a package.json with other scripts but no check offers no Check', async ($, on) => {
 +  world(on, { scripts: '{"scripts":{"test":"x"}}' })
 +  await start($)
 +  const ui = await mount($)
-+  expect(await ui.find({ key: 'check' })).toBeUndefined()
++  const options = (await ui.find({ key: 'actions' }))?.props.options as { label: string }[]
++  expect(options.map(o => o.label)).toEqual(['…', 'Simplify', 'Review', 'Remember'])
++})
++test('the agents row summarises, then lists type and model family and persists', async ($, on) => {
++  const { saved } = world(on, { spawned: [{ model: 'us.anthropic.claude-opus-5-5-v1', agentId: 'a1' }, { model: 'sonnet', agentId: 'a2' }] })
++  await start($)
++  await spawn($)
++  await spawn($)
++  const ui = await mount($)
++  expect((await ui.find({ type: 'Text', text: /^agents/ }))?.text).toBe('agents · 2 running · 0 done')
++  expect(await ui.find({ type: 'Text', text: 'Explore · opus' })).toBeUndefined()
++  expect((await ui.find({ key: 'agents' }))?.props.label).toBe('▸')
++  await ui.press({ key: 'agents' })
++  expect(await ui.find({ type: 'Text', text: 'Explore · opus' })).toBeDefined()
++  expect(await ui.find({ type: 'Text', text: 'Explore · sonnet' })).toBeDefined()
++  expect((await ui.find({ key: 'agents' }))?.props.label).toBe('▾')
++  expect(saved.get('agentsOpen')).toBe(true)
++})
++test('a finished agent counts as done once, and a resume is not a new run', async ($, on) => {
++  world(on, { spawned: [{ model: 'claude-opus-5-5', agentId: 'a1' }, { model: 'sonnet', agentId: 'a2' }, { model: 'claude-opus-5-5', agentId: 'a1' }] })
++  await start($)
++  await spawn($)
++  await spawn($)
++  await turn($, { agentId: 'a1' })
++  await turn($, { agentId: 'a1' })
++  await $.agent.spawn({ subagentType: 'Explore', description: 'again', prompt: 'more', tool_use_id: 'tu', background: true, fork: false, parentModel: 'opus', resume: { agentId: 'a1' } } as never)
++  await turn($, { agentId: 'a1' })
++  const ui = await mount($)
++  expect((await ui.find({ type: 'Text', text: /^agents/ }))?.text).toBe('agents · 1 running · 1 done')
 +})
 +test('the band yields to a survey', async ($, on) => {
-+  world(on)
++  world(on, { details: true })
 +  await start($)
 +  await turn($)
 +  const ui = await mount($, 'terminal', { ...BAND, hasSurvey: true })
-+  expect(await ui.find({ type: 'Text', text: /cost/ })).toBeUndefined()
-+  expect(await ui.find({ key: 'check' })).toBeUndefined()
++  expect(await ui.find({ type: 'Text', text: /cost|context/ })).toBeUndefined()
++  expect(await ui.find({ key: 'details' })).toBeUndefined()
 +  expect(await ui.find({ type: 'Text', text: 'below' })).toBeDefined()
 +})
-+test('a /clear restarts the counters and keeps the buttons', async ($, on) => {
-+  world(on, { usage: { startedAt: 0, context: { window: 200000 }, rateLimits: [] } })
++test('a /clear restarts the counters and keeps the menus and the details choice', async ($, on) => {
++  world(on, { details: true, usage: { startedAt: 0, context: { window: 200000 }, rateLimits: [] } })
 +  await start($)
 +  await turn($)
 +  await $.classic.SessionStart({ source: 'clear' })
 +  let ui = await mount($)
 +  expect(await ui.find({ type: 'Text', text: /^turns/ })).toBeUndefined()
-+  expect(await ui.find({ key: 'simplify' })).toBeDefined()
++  expect(await ui.find({ key: 'actions' })).toBeDefined()
 +  await ui.unmount()
 +  await turn($)
 +  ui = await mount($)
@@ -415,7 +469,7 @@ index 0000000..b82d4d9
 +})
 +test('a new SessionUsage.startedAt restarts the counters without a classic hook', async ($, on) => {
 +  const usage = { ...USAGE }
-+  world(on, { usage })
++  world(on, { usage, details: true })
 +  await start($)
 +  await turn($)
 +  await turn($)
@@ -428,13 +482,13 @@ index 0000000..b82d4d9
 +test('the first startedAt reading keeps the agents spawned before it', async ($, on) => {
 +  world(on, { spawned: [{ model: 'opus', agentId: 'a1' }] })
 +  await start($)
-+  await spawn($, 'Explore')
++  await spawn($)
 +  await turn($)
 +  const ui = await mount($)
-+  expect((await ui.find({ type: 'Text', text: /^agents/ }))?.text).toBe('agents · 1 running (opus) · 0 done')
++  expect((await ui.find({ type: 'Text', text: /^agents/ }))?.text).toBe('agents · 1 running · 0 done')
 +})
 +test('the metrics row wraps with no width, and below sits directly under the root', async ($, on) => {
-+  world(on)
++  world(on, { details: true })
 +  await start($)
 +  await turn($)
 +  for (const surface of ['terminal', 'desktop'] as const) {
@@ -447,36 +501,29 @@ index 0000000..b82d4d9
 +    await ui.unmount()
 +  }
 +})
-+test('before the first turn only the buttons draw', async ($, on) => {
-+  world(on)
++test('expanded before the first turn draws no metrics row', async ($, on) => {
++  world(on, { details: true })
 +  await start($)
 +  const ui = await mount($)
-+  expect(await ui.find({ type: 'Text', text: /^(cost|turns|agents)/ })).toBeUndefined()
-+  expect(await ui.find({ key: 'check' })).toBeDefined()
-+  expect(await ui.find({ type: 'Text', text: 'below' })).toBeDefined()
-+})
-+test('without a session start the band draws only what is below', async ($, on) => {
-+  world(on)
-+  const ui = await mount($)
-+  expect(await ui.find({ key: 'check' })).toBeUndefined()
-+  expect(await ui.find({ type: 'Text', text: 'below' })).toBeDefined()
++  expect(await ui.find({ key: 'metrics' })).toBeUndefined()
++  expect(await ui.find({ key: 'actions' })).toBeDefined()
 +})
 +test('the step row draws above the meter, and the band below comes last', async ($, on) => {
-+  world(on)
++  world(on, { details: true })
 +  await start($)
 +  await turn($)
 +  await $.tool.call({ tool: 'mcp__jstack__step', op: 'set', playbook: 'Feature', steps: ['Name the shape'] })
 +  const ui = await mount($)
 +  const drawn = JSON.stringify(await ui.drawn())
 +  const at = (text: string) => drawn.indexOf(text)
-+  expect(at('Feature · step 1/1') >= 0 && at('Feature · step 1/1') < at('cost $0.42') && at('cost $0.42') < at('"below"')).toBe(true)
++  expect(at('Feature · step 1/1') >= 0 && at('Feature · step 1/1') < at('context 38%') && at('context 38%') < at('cost $0.42') && at('cost $0.42') < at('"below"')).toBe(true)
 +  await ui.unmount()
 +})
 diff --git a/types/index.d.ts b/types/index.d.ts
-index 0b7920e..78b29d6 100644
+index 0b7920e..28f2005 100644
 --- a/types/index.d.ts
 +++ b/types/index.d.ts
-@@ -2,8 +2,28 @@ export type StepState = 'todo' | 'done' | 'skip'
+@@ -2,8 +2,31 @@ export type StepState = 'todo' | 'done' | 'skip'
  export type Step = { text: string; state: StepState; reason?: string }
  export type Board = { playbook: string; steps: Step[]; current: number }
  
@@ -491,13 +538,16 @@ index 0b7920e..78b29d6 100644
 +  busyMs: number
 +  contextPercent: number | null
 +  limits: Limit[]
-+  // agentId to model, for the subagents still running
-+  running: Record<string, string>
++  // agentId to model and agent type, for the subagents still running
++  running: Record<string, { model: string; type: string }>
 +  done: number
 +  // Names from $.command.list(), so a button whose command is absent is hidden
 +  commands: string[]
 +  levelPath: string | null
 +  hasCheck: boolean
++  // Persisted in $.store: the metrics row shown, and the running agents listed one per line
++  details: boolean
++  agentsOpen: boolean
 +}
 +
  declare module 'claude-code' {
