@@ -48,6 +48,11 @@ mv "$stage/agents/poteto-agent.md" "$stage/agents/j-agent.md"
 # Drives Cursor's hosted agents (routines, update_state, SendToUser webhooks):
 # nothing in Claude Code to translate it to
 rm -rf "$stage/skills/make-bot-ui"
+# poteto-help describes Cursor Custom Modes and links docs this sync never
+# copies; ketchup-video needs a video renderer; statechart installs npm
+# packages with unpinned transitive dependencies plus TLC and Java (~305 MB)
+# on first use
+rm -rf "$stage/skills/poteto-help" "$stage/skills/ketchup-video" "$stage/skills/statechart"
 
 # Whole-word literal substitutions, in file order: where a term starts or
 # ends with a letter or digit, a match touching another one there is left
@@ -98,7 +103,7 @@ fi
 if [ "$apply_patches" = true ] && [ "${JSTACK_NO_CHECK:-}" != 1 ]; then
   # Only runtime dependencies, and no install scripts (dependencies' never run)
   (cd "$scripts" && bun install --frozen-lockfile --production --ignore-scripts > /dev/null &&
-    bun test orch watch-pr > /dev/null 2>&1) \
+    bun test orch watch-pr check-plan.test.ts > /dev/null 2>&1) \
     || die "test: bun test failed in skills/j-mode/scripts"
   rm -rf "$scripts/node_modules"
   # 20-runtime.patch rewrote worktree-audit.sh's transcript lookup

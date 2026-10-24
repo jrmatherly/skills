@@ -31,7 +31,7 @@ jobs:
       - run: shellcheck --severity=warning scripts/* .githooks/* jstack/tests/*.sh
       - run: scripts/check-resume
       - run: scripts/check-jstack --no-types
-      - run: bun install --frozen-lockfile --production --ignore-scripts && bun test orch watch-pr
+      - run: bun install --frozen-lockfile --production --ignore-scripts && bun test orch watch-pr check-plan.test.ts
         working-directory: plugins/jstack/skills/j-mode/scripts
   gitleaks:
     runs-on: ubuntu-latest

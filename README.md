@@ -159,7 +159,10 @@ disagree" notes in `SKILL.md` against what changed.
 `plugins/jstack/` is generated, never edited by hand. `scripts/sync-jstack`
 fetches upstream at the commit pinned in `jstack/upstream`, keeps its skills,
 agents and `LICENSE` (dropping `make-bot-ui`, which drives Cursor's hosted
-agents), applies `jstack/substitutions.tsv` (whole-word renames such as
+agents; `poteto-help`, which describes Cursor Custom Modes and links docs the
+sync never copies; `ketchup-video`, which needs a video renderer; and
+`statechart`, which installs npm packages with unpinned transitive
+dependencies plus TLC and Java, about 305 MB, on first use), applies `jstack/substitutions.tsv` (whole-word renames such as
 `poteto-mode` → `j-mode` and Cursor → Claude Code tool names), then
 `jstack/patches/*.patch` in order (`10-router`, `20-runtime`, `30-models`,
 `40-comments`, `50-skill-refs`, `60-safety`, `70-reflect`, `80-mod`, `90-band`). It regenerates
@@ -258,4 +261,4 @@ notices, named in their sections above.
 jstack is a fork of [pstack](https://github.com/cursor/plugins/tree/main/pstack)
 by Lauren Tan, MIT-licensed; the upstream notice is kept in
 [`plugins/jstack/LICENSE`](plugins/jstack/LICENSE). Pinned upstream:
-`cursor/plugins@12d587dfb20741cafc376c42c696c5f6e2a64487` (pstack 0.15.5).
+`cursor/plugins@e73df471cd4bd918367e99f3dd9c51bd53ddf5f0` (pstack 0.15.32).
