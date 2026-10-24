@@ -10,10 +10,11 @@ const USAGE: SessionUsage = {
   rateLimits: [{ kind: 'five_hour', percentUsed: 12, resetsAt: '2026-10-22T15:40:00Z' }, { kind: 'seven_day', percentUsed: 60 }],
   cost: { usd: 0.42 },
 }
-type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean; board?: boolean; memory?: string }
+type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean; board?: boolean; memory?: string; daemonDown?: boolean }
 function world(on: On, w: World = {}) {
   const ran: unknown[] = []
   const toasts: string[] = []
+  const fetched: string[] = []
   const spawned = [...(w.spawned ?? [])]
   const files: Record<string, string> = { '/home/u/.claude/.ponytail-active': 'full\n' }
   if (w.hasPackage !== false) files['/home/u/package.json'] = w.scripts ?? '{"scripts":{"check":"x"}}'
@@ -40,8 +41,9 @@ function world(on: On, w: World = {}) {
   on('agent.spawn', () => ({ ...(spawned.shift() ?? { model: 'opus' }) }))
   on('turn.complete', () => ({ text: '' }))
   on('ui.toast', ($, e) => { toasts.push(e.text); return { value: undefined } })
+  on('http.fetch', ($, e) => { fetched.push(e.url); return w.daemonDown ? ({ deny: 'refused' } as never) : { value: { status: 200, ok: true, headers: {}, text: '{}' } } })
   on('ui.render', () => ({ type: 'Text', props: {}, children: ['below'] }))
-  return { ran, toasts, saved, files }
+  return { ran, toasts, saved, files, fetched }
 }
 
 const start = ($: Engine) => $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/home/u' })
@@ -59,6 +61,11 @@ async function tile(ui: { find: (q: { key: string }) => Promise<{ children: unkn
   return { text: lines.map(l => l.children.join('')), props: lines.map(l => l.props) }
 }
 const PASS = { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false }
+// The Memory button's text and its Text props
+async function memoryButton(ui: { find: (q: { key: string }) => Promise<{ children: unknown[] } | undefined> }) {
+  const label = ((await ui.find({ key: 'memory' }))?.children ?? [])[0] as Node | undefined
+  return label ? { text: label.children.join(''), props: label.props } : undefined
+}
 
 test('collapsed by default: context, the two menus and More, no metrics', async ($, on) => {
   world(on)
@@ -175,8 +182,8 @@ test('Board without a board page toasts instead of opening', async ($, on) => {
   expect(toasts).toEqual(['Ponytail has not built the board yet; it writes it after the first turn'])
 })
 const MEMORY = '{"optInOnly":true,"optInPaths":["~"],"embedVersion":"1.1.0"}'
-test('Memory starts the Hindsight dashboard, opens its recorded port, and toasts a failed start', async ($, on) => {
-  const { toasts } = world(on, { memory: MEMORY })
+test('Memory is its own button: it shows the state, starts the Hindsight dashboard, opens its recorded port, and toasts a failed start', async ($, on) => {
+  const { toasts, fetched } = world(on, { memory: MEMORY })
   const argv: unknown[] = []
   const results = [PASS, PASS, { ...PASS, exitCode: 1, stderr: 'uv: no such tool\n' }]
   on('process.run', ($, e) => { argv.push(e.argv); return { value: results.shift()! } })
@@ -184,16 +191,38 @@ test('Memory starts the Hindsight dashboard, opens its recorded port, and toasts
   await turn($)
   const ui = await mount($)
   const options = (await ui.find({ key: 'actions' }))?.props.options as { label: string }[]
-  expect(options.map(o => o.label)).toEqual(['…', 'Simplify', 'Review', 'Remember', 'Board', 'Check', 'Memory'])
-  await ui.select({ key: 'actions', value: 'memory' })
-  await ui.select({ key: 'actions', value: 'memory' })
+  expect(options.map(o => o.label)).toEqual(['…', 'Simplify', 'Review', 'Remember', 'Board', 'Check'])
+  const memory = await memoryButton(ui)
+  expect(memory?.text).toBe('Memory · on')
+  expect(memory?.props.color).toBe('success')
+  expect(fetched).toEqual(['http://127.0.0.1:9077/health'])
+  await ui.press({ key: 'memory' })
+  await ui.press({ key: 'memory' })
   const startUi = ['uvx', 'hindsight-embed@1.1.0', '-p', 'coding-agent', 'ui', 'start', '--hostname', '127.0.0.1']
   expect(argv).toEqual([startUi, ['open', 'http://localhost:29001'], startUi])
   expect(toasts).toEqual(['starting the memory dashboard…', 'starting the memory dashboard…', 'could not start the memory dashboard: uv: no such tool'])
   await ui.press({ key: 'details' })
-  const memory = await tile(ui, 'memory')
-  expect(memory.text).toEqual(['memory', 'on'])
-  expect(memory.props[1]?.dimColor).toBe(false)
+  expect(await ui.find({ key: 'tile-memory' })).toBeUndefined()
+})
+test('the daemon probe is cached across draws and cleared when the button starts the daemon', async ($, on) => {
+  const { fetched } = world(on, { memory: MEMORY })
+  on('process.run', () => ({ value: PASS }))
+  await start($)
+  const ui = await mount($)
+  await ui.unmount()
+  await mount($)
+  expect(fetched.length).toBe(1)
+  await (await mount($)).press({ key: 'memory' })
+  await mount($)
+  expect(fetched.length).toBe(2)
+})
+test('Memory says down when the daemon does not answer, on the configured port', async ($, on) => {
+  const { fetched } = world(on, { memory: '{"apiPort":9100}', daemonDown: true })
+  await start($)
+  const memory = await memoryButton(await mount($))
+  expect(memory?.text).toBe('Memory · down')
+  expect(memory?.props.color).toBe('warning')
+  expect(fetched).toEqual(['http://127.0.0.1:9100/health'])
 })
 test('Memory follows the config at click time: a local embed checkout and profile, the default port when none is recorded, and the kill switch', async ($, on) => {
   const { toasts, files } = world(on, { memory: '{"embedPackagePath":"/src/embed","daemonProfile":"lab","apiPort":9100}', details: true })
@@ -202,23 +231,23 @@ test('Memory follows the config at click time: a local embed checkout and profil
   await start($)
   await turn($)
   const ui = await mount($)
-  await ui.select({ key: 'actions', value: 'memory' })
+  await ui.press({ key: 'memory' })
   expect(argv).toEqual([['uv', 'run', '--directory', '/src/embed', 'hindsight-embed', '-p', 'lab', 'ui', 'start', '--hostname', '127.0.0.1'], ['open', 'http://localhost:19100']])
-  expect((await tile(ui, 'memory')).text).toEqual(['memory', 'on'])
+  expect((await memoryButton(ui))?.text).toBe('Memory · on')
   await ui.unmount()
   files['/home/u/.hindsight/coding-agent.json'] = '{"disabled":true}'
   const off = await mount($)
-  await off.select({ key: 'actions', value: 'memory' })
+  await off.press({ key: 'memory' })
   expect(argv.length).toBe(2)
   expect(toasts).toEqual(['starting the memory dashboard…', 'memory is off; `hindsight-memory on` first'])
-  const memory = await tile(off, 'memory')
-  expect(memory.text).toEqual(['memory', 'off'])
-  expect(memory.props[1]?.dimColor).toBe(true)
+  const memory = await memoryButton(off)
+  expect(memory?.text).toBe('Memory · off')
+  expect(memory?.props.dimColor).toBe(true)
   await off.unmount()
   files['/home/u/.hindsight/coding-agent.json'] = '{nope'
-  expect((await tile(await mount($), 'memory')).text).toEqual(['memory', 'n/a'])
+  expect((await memoryButton(await mount($)))?.text).toBe('Memory · n/a')
   files['/home/u/.hindsight/coding-agent.json'] = '[]'
-  expect((await tile(await mount($), 'memory')).text).toEqual(['memory', 'n/a'])
+  expect((await memoryButton(await mount($)))?.text).toBe('Memory · n/a')
 })
 test('a port file that is not a number falls back to the default port', async ($, on) => {
   const { files } = world(on, { memory: MEMORY })
@@ -227,15 +256,16 @@ test('a port file that is not a number falls back to the default port', async ($
   on('process.run', ($, e) => { argv.push(e.argv); return { value: PASS } })
   await start($)
   const ui = await mount($)
-  await ui.select({ key: 'actions', value: 'memory' })
+  await ui.press({ key: 'memory' })
   expect(argv[1]).toEqual(['open', 'http://localhost:19077'])
 })
-test('without a Hindsight config there is no Memory action and no memory tile', async ($, on) => {
-  world(on, { details: true })
+test('without a Hindsight config there is no Memory button and no probe', async ($, on) => {
+  const { fetched } = world(on, { details: true })
   await start($)
   await turn($)
   const ui = await mount($)
-  expect(await ui.find({ key: 'tile-memory' })).toBeUndefined()
+  expect(await ui.find({ key: 'memory' })).toBeUndefined()
+  expect(fetched).toEqual([])
 })
 test('a command missing from command.list leaves its action out', async ($, on) => {
   world(on, { commands: ['code-review'] })

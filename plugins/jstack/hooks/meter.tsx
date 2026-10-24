@@ -102,6 +102,27 @@ async function openTarget($: EngineInterface, target: string, what: string): Pro
   if (r.exitCode !== 0) $.ui.toast(`could not open the ${what}: ${r.stderr.trim().slice(-200) || target}`)
 }
 
+const DEFAULT_PORT = 9077
+// Daemon liveness for the Memory button, cached: the band draws on every turn, and a
+// /health request per draw would be one per keystroke. Cleared when the button starts
+// the daemon, so the label follows within one draw instead of a cache window
+let probed: { port: number; ok: boolean; at: number } | null = null
+async function daemonUp($: EngineInterface, port: number): Promise<boolean> {
+  const now = Date.now()
+  if (probed && probed.port === port && now - probed.at < 30_000) return probed.ok
+  const ok = await $.http.fetch(`http://127.0.0.1:${port}/health`).then(r => r.ok, () => false)
+  probed = { port, ok, at: now }
+  return ok
+}
+type MemoryState = 'on' | 'off' | 'down' | 'n/a'
+// n/a is a config the band can't parse, so it tells an unreadable file from Hindsight not being
+// installed; down is the kill switch off but no daemon answering
+async function memoryState($: EngineInterface, c: MemoryConfig | null): Promise<MemoryState> {
+  if (!c) return 'n/a'
+  if (c.disabled) return 'off'
+  return (await daemonUp($, c.apiPort ?? DEFAULT_PORT)) ? 'on' : 'down'
+}
+const MEMORY_TONE: Partial<Record<MemoryState, 'success' | 'warning'>> = { on: 'success', down: 'warning' }
 let openingMemory = false
 async function openMemory($: EngineInterface, config: string): Promise<void> {
   if (openingMemory) {
@@ -132,7 +153,8 @@ async function openMemory($: EngineInterface, config: string): Promise<void> {
     }
     // The embed records the dashboard's port per profile next to its logs, but only when it did the start itself; its default is the daemon's port plus 10000
     const recorded = (await $.fs.read(`${await $.env.get('HOME')}/.hindsight/profiles/${profile}.ui.port`).catch(() => '')).trim()
-    await openTarget($, `http://localhost:${/^\d+$/.test(recorded) ? recorded : (c.apiPort ?? 9077) + 10000}`, 'memory dashboard')
+    probed = null
+    await openTarget($, `http://localhost:${/^\d+$/.test(recorded) ? recorded : (c.apiPort ?? DEFAULT_PORT) + 10000}`, 'memory dashboard')
   } catch (err) {
     $.ui.toast(`could not open the memory dashboard: ${err instanceof Error ? err.message : String(err)}`)
   } finally {
@@ -209,8 +231,7 @@ export function registerMeter(on: On): void {
     const m = await read($, meter)
     const ponytail = m.commands.includes(PONYTAIL)
     const [active, hindsight, below] = await Promise.all([ponytail && m.levelPath ? readLevel($, m.levelPath) : null, m.memoryConfig ? readMemory($, m.memoryConfig) : null, next(e)])
-    // A config the band can't parse shows as n/a, so the tile tells an unreadable file from Hindsight not being installed
-    const memory = m.memoryConfig ? (hindsight ? (hindsight.disabled ? 'off' : 'on') : 'n/a') : null
+    const memory = m.memoryConfig ? await memoryState($, hindsight) : null
     const elements = $.ui.resolve(e)
     const { Box, Text, Button } = elements
     // Mobile's table has no Select, so the menus are left out there
@@ -220,7 +241,6 @@ export function registerMeter(on: On): void {
       { key: 'tokens', label: 'tokens', value: `${short(m.tokens.input + m.tokens.cacheWrite)} in · ${short(m.tokens.output)} out`, sub: `${short(m.tokens.cacheRead)} cached` },
       { key: 'turns', label: 'turns', value: `${m.turns}` },
       { key: 'time', label: 'agent time', value: elapsed(m.busyMs) },
-      ...(memory ? [{ key: 'memory', label: 'memory', value: memory, isDim: memory !== 'on' }] : []),
       ...m.limits.map(l => ({
         key: `limit-${l.kind}`,
         label: QUOTA[l.kind] ?? l.kind,
@@ -234,7 +254,6 @@ export function registerMeter(on: On): void {
       ...COMMANDS.filter(c => m.commands.includes(c.command)).map(c => ({ value: c.value, label: c.label, run: () => $.command.run({ command: c.command }) })),
       ...(boardPath ? [{ value: 'board', label: 'Board', run: () => openBoard($, boardPath) }] : []),
       ...(m.hasCheck ? [{ value: 'check', label: 'Check', run: () => check($) }] : []),
-      ...(memoryConfig ? [{ value: 'memory', label: 'Memory', run: () => openMemory($, memoryConfig) }] : []),
     ]
     const running = Object.entries(m.running)
     return (
@@ -252,6 +271,11 @@ export function registerMeter(on: On): void {
           {Select && actions.length > 0 ? (
             // value stays '' so the control reads as a menu; picking '…' does nothing
             <Select key="actions" label="Actions" options={[{ value: '', label: '…' }, ...actions]} value="" onSelect={v => actions.find(a => a.value === v)?.run()} />
+          ) : null}
+          {memoryConfig && memory ? (
+            <Button key="memory" plain onPress={() => openMemory($, memoryConfig)}>
+              <Text key="memory-state" color={MEMORY_TONE[memory]} dimColor={!(memory in MEMORY_TONE)}>{`Memory · ${memory}`}</Text>
+            </Button>
           ) : null}
           <Button key="details" plain label={m.details ? 'Less' : 'More'} onPress={() => toggle($, 'details')} />
         </Box>
