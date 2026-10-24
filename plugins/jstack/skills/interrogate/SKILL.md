@@ -35,8 +35,6 @@ Launch all reviewers in a single message with the Agent tool, one per entry on t
 
 Each reviewer gets `subagent_type: general-purpose`, a read-only brief (it reads and reports, and edits nothing), and `model` and `effort` from its configured entry, or its table default when there is no configured line. Omit both for an `inherit` entry, so that reviewer runs on the parent model. A `codex` entry runs per the **setup-jstack** skill's "Codex seats". If the Agent tool rejects an entry, run that reviewer on `opus medium` and say so.
 
-If the Agent tool rejects a configured entry, run that reviewer on its family's table default and say so. Families go by prefix: `claude-*`, and `grok-*` with `cursor-grok-*` and `composer-*`. A refused `composer-*` entry runs on Reviewer B's default. With no family match, use Reviewer A's default. If it rejects a table default, spawn with the closest equivalent from the valid slugs in its error message (prefer the same family and reasoning tier), and open a separate PR to update the default table. Do not block the review on the slug issue. Never treat an alias entry as a rejected slug or apply either fallback to it.
-
 Read `references/reviewer-prompt.md` and fill in the same template for every reviewer with the stated intent, the diff or file contents, the rubric from `references/rubric.md`, and the code-quality lens from `references/code-quality-review.md`. Pick each subagent's reasoning level (`effort`) for the job, per the Subagents section of the **j-mode** skill.
 
 ## Step 4, Synthesize

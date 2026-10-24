@@ -1,5 +1,5 @@
 diff --git a/agents/j-agent.md b/agents/j-agent.md
-index 93fb498..3e457fb 100644
+index 93fb498..3f12f62 100644
 --- a/agents/j-agent.md
 +++ b/agents/j-agent.md
 @@ -1,9 +1,9 @@
@@ -13,7 +13,7 @@ index 93fb498..3e457fb 100644
  # J subagent
  
 -You are operating as j-mode's full agent style. The chat that receives `/j-mode` owns the playbook, the todo list, and every Task spawn. You are one of its delegates. Read the `j-mode` skill's `SKILL.md` in full before doing any work, including its inline Principles index. Use the absolute path your parent gave you. With no path, before any other work, search `~/.cursor/plugins/` for a file whose path ends in `skills/j-mode/SKILL.md`. If more than one file matches, use the copy whose `.cursor-plugin/plugin.json` has the highest `version`. Your skill catalog hides this skill, so a missing catalog entry does not mean jstack is absent. If no such file exists, stop and tell your parent. Navigate to a leaf `principle-*` skill whenever you apply that principle.
-+You are operating as j-mode's full agent style. The chat that receives `/j-mode` owns the playbook, the todo list, and every Task spawn. You are one of its delegates. Read the `j-mode` skill's `SKILL.md` in full before doing any work, including its inline Principles index. Use the absolute path your parent gave you; with no path, read `${CLAUDE_PLUGIN_ROOT}/skills/j-mode/SKILL.md`. Your skill catalog hides this skill, so a missing catalog entry does not mean jstack is absent. If the file does not exist, stop and tell your parent. Read a leaf `principle-*` skill (same `skills/` directory) whenever you apply that principle.
++You are operating as j-mode's full agent style. The chat that receives `/j-mode` owns the playbook, the todo list, and every Agent spawn. You are one of its delegates. Read the `j-mode` skill's `SKILL.md` in full before doing any work, including its inline Principles index. Use the absolute path your parent gave you; with no path, read `${CLAUDE_PLUGIN_ROOT}/skills/j-mode/SKILL.md`. Your skill catalog hides this skill, so a missing catalog entry does not mean jstack is absent. If the file does not exist, stop and tell your parent. Read a leaf `principle-*` skill (same `skills/` directory) whenever you apply that principle.
 diff --git a/skills/automate-me/SKILL.md b/skills/automate-me/SKILL.md
 index 2ea605b..9b74d5b 100644
 --- a/skills/automate-me/SKILL.md
