@@ -1,5 +1,5 @@
 diff --git a/skills/automate-me/SKILL.md b/skills/automate-me/SKILL.md
-index e628234..6f8ea6a 100644
+index 9b74d5b..7a4b6ac 100644
 --- a/skills/automate-me/SKILL.md
 +++ b/skills/automate-me/SKILL.md
 @@ -1,6 +1,6 @@
@@ -17,66 +17,53 @@ index e628234..6f8ea6a 100644
 -Locate the active workspace's transcripts before fanning out. The system prompt names the workspace's `agent-transcripts/` directory. Use only that path. Don't glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects.
 +Locate the project's transcripts before fanning out: this project's Claude Code transcripts: `~/.claude/projects/<slug>/<session-id>.jsonl`, with subagents under `<slug>/<session-id>/subagents/agent-*.jsonl`. `<slug>` is the project's real path (`pwd -P`) with every character other than a letter or digit turned into `-` (`/Users/you/proj` → `-Users-you-proj`). Each line is a JSON object; chat messages are the lines whose `type` is `user` or `assistant` (read them with `jq`). Don't glob across `~/.claude/projects/*/`: that crosses project boundaries and reads private chats from unrelated projects.
  
- Survey recent agent conversations within that scope for recurring patterns. Run multiple parallel subagents across slices of history (e.g. last 2-4 weeks, split into 3 slices so each has enough material). Each slice mining subagent reads transcripts from the workspace-scoped path the parent provides, looks for the signals below, and returns a short structured list of patterns it saw with evidence pointers. Default signals worth hunting:
+ Survey recent agent conversations within that scope for recurring patterns. Run multiple parallel subagents across slices of history (e.g. last 2-4 weeks, split into 3 slices so each has enough material). Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **j-mode** skill. Each slice mining subagent reads transcripts from the workspace-scoped path the parent provides, looks for the signals below, and returns a short structured list of patterns it saw with evidence pointers. Default signals worth hunting:
  
 diff --git a/skills/j-mode/SKILL.md b/skills/j-mode/SKILL.md
-index e03ed55..f787fb0 100644
+index c20c32c..3418d1b 100644
 --- a/skills/j-mode/SKILL.md
 +++ b/skills/j-mode/SKILL.md
-@@ -6,6 +6,8 @@ disable-model-invocation: true
+@@ -6,7 +6,7 @@ disable-model-invocation: true
  
  # J mode
  
-+**Paths.** jstack's root is `${CLAUDE_PLUGIN_ROOT}` (written `<jstack>` in playbooks and references, which are read later and aren't expanded); this skill's directory is `${CLAUDE_SKILL_DIR}`.
-+
+-Bundled skills live at `../<name>/SKILL.md` from this file, so put this file's absolute path in every `j-agent` prompt.
++**Paths.** jstack's root is `${CLAUDE_PLUGIN_ROOT}` (written `<jstack>` in playbooks and references, which are read later and aren't expanded); this skill's directory is `${CLAUDE_SKILL_DIR}`. Bundled skills live at `../<name>/SKILL.md` from this file, so put this file's absolute path in every `j-agent` prompt.
+ 
  ## Non-negotiables
  
- The Principles section below grounds every trigger. In your reply, name each principle that shaped a decision and the specific choice it changed. Cite only principles whose leaf SKILL.md you read this session.
-@@ -134,7 +136,7 @@ A large or cross-cutting effort (a migration across many call sites, an ambitiou
- - **Orchestrate.** A standing project handed to one coordinator chat: multi-day, many stacked PRs, dozens to hundreds of subagents, minimal human turns ("run this whole project", "own this migration until it lands"). Distinct from Autonomous run, which drives one task to a predicate. Work one agent could finish inside the session's budget routes there, not here, however program-shaped the phrasing sounds. `playbooks/orchestrate.md`.
- - **Autopilot-full.** A queue of independent PRs run to merged with full autonomy. One owner per PR carries build through merge, and the root swarm-verifies each PR before its owner merges ("autopilot this queue", "full autopilot", one-owner-per-PR programs). `playbooks/autopilot-full.md`.
- - **Autopilot-stack.** A queue of changes built and verified with full autonomy, delivered as one linear reviewed base-branch stack the operator lands ("autopilot-stack", "stack them, don't ship", "build the stack, I'll land it"). `playbooks/autopilot-stack.md`.
--- **Session pickup.** Resuming or taking over a prior agent's in-flight work from a transcript, cloud-agent URL, or pushed branch. `playbooks/session-pickup.md`.
-+- **Session pickup.** Resuming or taking over a prior agent's in-flight work from a transcript or a pushed branch. `playbooks/session-pickup.md`.
- - **Pause safely.** Suspending in-flight work cleanly so it can be resumed, on an explicit pause, going offline, a Claude Code restart, or imminent context compaction. The complement to Session pickup. Full steps: `playbooks/pause-safely.md`.
- - **Multi-phase or multi-PR plan.** Work that spans phases or stacked PRs. `playbooks/multi-phase-plan.md`.
- - **Worktree and simulator cleanup.** Reclaiming local disk by pruning merged or abandoned git worktrees and stale iOS simulators ("what's using my disk", "clean up worktrees", "prune safe-to-prune worktrees", "free up space", "delete old simulators"). `playbooks/worktree-cleanup.md`.
+@@ -142,7 +142,7 @@ A large or cross-cutting effort (a migration across many call sites, an ambitiou
+ - **Orchestrate.** A standing project handed to one coordinator chat: multi-day, many stacked PRs, dozens to hundreds of subagents, minimal human turns ("run this whole project", "own this migration until it lands"). Distinct from Autonomous run, which drives one task to a predicate. Work one agent could finish inside the session's budget routes there, not here, however program-shaped the phrasing sounds.
+ - **Autopilot-full.** A queue of independent PRs run to merged with full autonomy. One owner per PR carries build through merge, and the root swarm-verifies each PR before its owner merges ("autopilot this queue", "full autopilot", one-owner-per-PR programs).
+ - **Autopilot-stack.** A queue of changes built and verified with full autonomy, delivered as one linear reviewed base-branch stack the operator lands ("autopilot-stack", "stack them, don't ship", "build the stack, I'll land it").
+-- **Session pickup.** Resuming or taking over a prior agent's in-flight work from a transcript, cloud-agent URL, or pushed branch.
++- **Session pickup.** Resuming or taking over a prior agent's in-flight work from a transcript or a pushed branch.
+ - **Pause safely.** Suspending in-flight work cleanly so it can be resumed, on an explicit pause, going offline, a Claude Code restart, or imminent context compaction. The complement to Session pickup.
+ - **Multi-phase or multi-PR plan.** Work that spans phases or stacked PRs. File: `playbooks/multi-phase-plan.md`.
+ - **Worktree and simulator cleanup.** Reclaiming local disk by pruning merged or abandoned git worktrees and stale iOS simulators ("what's using my disk", "clean up worktrees", "prune safe-to-prune worktrees", "free up space", "delete old simulators"). File: `playbooks/worktree-cleanup.md`.
 diff --git a/skills/j-mode/playbooks/autopilot-full.md b/skills/j-mode/playbooks/autopilot-full.md
-index 4ae7b1b..574b1b4 100644
+index 0688823..d7369e0 100644
 --- a/skills/j-mode/playbooks/autopilot-full.md
 +++ b/skills/j-mode/playbooks/autopilot-full.md
-@@ -3,11 +3,11 @@
- **You own the verdicts, never the PRs. One owner runs each PR from build to merge, and nothing merges without your clean swarm verdict.** For "autopilot this queue", "full autopilot", and one-owner-per-PR programs. Orchestrate runs a standing program whose coordinator lands verified work itself and whose workers never merge. Here each PR's owner carries the whole lifecycle through the merge, and the root keeps only verification, countersigns, and audits.
+@@ -5,13 +5,13 @@
+ A verdict covers one patch and green CI covers one head. Step 4 runs a full swarm once, and again only for a major change. The patch-id rule in `playbooks/shipping.md` can carry a lane's result, and every new head needs its own green CI.
  
- 1. **Mark the operator's items and honor state-then-wait.** Items the operator names stay with the operator. The operator reviews and clicks, and no owner merges one. When the operator asks for the protocol or the plan to be stated, deliver the statement and stop. Execution starts only on the operator's explicit go. On that go, arm a `/goal` with the full program objective. The goal continues across turns until the queue is done.
--2. **Spawn one owner per PR with the full lifecycle and an early trail.** Resolve the forge once for the program. GitHub CLI (`gh`) is the default. If `command -v origin` succeeds and Origin can resolve the repository, use `origin pr ...` for PR create, edit, view, watch, and merge operations. Otherwise stay on `gh` and record the fallback. Never require Graphite (`gt`). One Cursor cloud agent per PR owns build, the first push, a ready PR, self-proof on the real artifact (the **principle-prove-it-works** skill), skeptical Bugbot triage per `../references/bugbot-triage.md`, a slop-strip (the `deslop` skill from the `cursor-team-kit` plugin (`/deslop`)), `/no-comments` (the **no-comments** skill), a rebase onto current trunk, the babysit loop to green (`playbooks/babysit.md`), and the merge itself. Within about 15 minutes, every owner starts a `decisions.tsv` trail per the **show-me-your-work** skill, pushes its first branch snapshot, and opens the PR ready, never draft. Open the PR before self-proof so the URL, decisions, and checks form a durable trail. Keep `decisions.tsv` uncommitted and return it with the reports. As soon as a subagent starts, the owner adds its ID, expected runtime (at least the longest past run of that kind), and state to a `children.tsv` kept the same way. The owner does the first rebase before the code-ready report and babysit, whether or not trunk has drifted. In fix rounds, the owner keeps that merge base. The owner rebases again only at merge prep (step 5), on a `git merge-tree` conflict with trunk, or on a CI failure that comes from a change on trunk. When the shipped code is final, after the slop-strip and `/no-comments`, it reports the code-ready head SHA. It also reports the SHA of each later push that changes the patch. Self-proof, CI, and babysit then run in parallel with the swarm. The owner reports merge-ready with the head SHA when self-proof, CI, and babysit finish. Before a push that starts a round, run the pre-review checks that the repo's AGENTS.md files and rules name for the touched paths. Run them on the committed head. A hook pass is not proof. To publish each rebase, push the owner's own branch with `git push --force-with-lease` after an `ls-remote` check. Never force-push a shared branch. The merge is the one step an owner may not take alone. Step 4 gates it.
-+2. **Spawn one owner per PR with the full lifecycle and an early trail.** Resolve the forge once for the program. GitHub CLI (`gh`) is the default. If `command -v origin` succeeds and Origin can resolve the repository, use `origin pr ...` for PR create, edit, view, watch, and merge operations. Otherwise stay on `gh` and record the fallback. Never require Graphite (`gt`). One worktree-isolated background subagent per PR owns build, the first push, a ready PR, self-proof on the real artifact (the **principle-prove-it-works** skill), skeptical Bugbot triage per `../references/bugbot-triage.md`, a slop-strip (`/simplify`), `/no-comments` (the **no-comments** skill), a rebase onto current trunk, the babysit loop to green (`playbooks/babysit.md`), and the merge itself. Within about 15 minutes, every owner starts a `decisions.tsv` trail per the **show-me-your-work** skill, pushes its first branch snapshot, and opens the PR ready, never draft. Open the PR before self-proof so the URL, decisions, and checks form a durable trail. Keep `decisions.tsv` uncommitted and return it with the reports. As soon as a subagent starts, the owner adds its ID, expected runtime (at least the longest past run of that kind), and state to a `children.tsv` kept the same way. The owner does the first rebase before the code-ready report and babysit, whether or not trunk has drifted. In fix rounds, the owner keeps that merge base. The owner rebases again only at merge prep (step 5), on a `git merge-tree` conflict with trunk, or on a CI failure that comes from a change on trunk. When the shipped code is final, after the slop-strip and `/no-comments`, it reports the code-ready head SHA. It also reports the SHA of each later push that changes the patch. Self-proof, CI, and babysit then run in parallel with the swarm. The owner reports merge-ready with the head SHA when self-proof, CI, and babysit finish. Before a push that starts a round, run the pre-review checks that the repo's AGENTS.md files and rules name for the touched paths. Run them on the committed head. A hook pass is not proof. To publish each rebase, push the owner's own branch with `git push --force-with-lease` after an `ls-remote` check. Never force-push a shared branch. The merge is the one step an owner may not take alone. Step 4 gates it.
- 3. **Run owners in true parallel and never stack.** Many owners at once when PRs are self-contained: one writer per branch, disjoint files, cross-PR drift absorbed by rebase. Only genuinely overlapping work serializes. Self-contained PRs branch straight off main, and sequenced work is merge-then-branch. One exception: an owner that must split a genuinely dependent change may hold a short private base-branch stack.
--4. **Swarm-verify every round before its merge.** A round starts at the owner's code-ready head SHA and at each later push that changes the PR's patch. At that SHA, fan out parallel independent verifiers per the **swarm** skill and aggregate to one verdict. The merge needs a clean verdict from the round whose patch matches the merge-ready head. Audit the receipts in the merge-ready report before the verdict. The lanes: re-run the gates at that SHA. Prove the load-bearing behavior live on the real surface the change touches (with the matching control skill, such as `control-cli` or `control-ui` from `cursor-team-kit`, or a named driver where none exists). Audit the diff, distrusting the PR body. Run the audit as two or more review lanes with the full brief. Give each lane one main focus, such as consumer parity with trunk, lifetimes and races, or data and config safety. **Regression lane against trunk.** Run the same load-bearing scenario on current trunk. If trunk does not have the feature, record that fact and gate the behavior the diff adds plus the end state the user waits for instead of pretending trunk can produce it. The live lane is the floor, and a verdict without it is not clean. No merge without the root's clean verdict. When the lanes return, send every proven finding against the PR to the owner in one fix-forward. A defect that a lane filed as a note is a finding. For each behavior finding, ask for a red test that covers every site with the same defect. Where no test can show the defect, ask for a repro receipt instead. Add that defect to the next round's review brief. The new head gets a fresh swarm and a fresh verdict, except for lane results that stay valid under the patch-id rule in `playbooks/shipping.md`.
-+4. **Swarm-verify every round before its merge.** A round starts at the owner's code-ready head SHA and at each later push that changes the PR's patch. At that SHA, fan out parallel independent verifiers per the **swarm** skill and aggregate to one verdict. The merge needs a clean verdict from the round whose patch matches the merge-ready head. Audit the receipts in the merge-ready report before the verdict. The lanes: re-run the gates at that SHA. Prove the load-bearing behavior live on the real surface the change touches (with the matching control skill, the `run` skill for CLIs or the `chrome-devtools-mcp:chrome-devtools` skill for UIs, or a named driver where none exists). Audit the diff, distrusting the PR body. Run the audit as two or more review lanes with the full brief. Give each lane one main focus, such as consumer parity with trunk, lifetimes and races, or data and config safety. **Regression lane against trunk.** Run the same load-bearing scenario on current trunk. If trunk does not have the feature, record that fact and gate the behavior the diff adds plus the end state the user waits for instead of pretending trunk can produce it. The live lane is the floor, and a verdict without it is not clean. No merge without the root's clean verdict. When the lanes return, send every proven finding against the PR to the owner in one fix-forward. A defect that a lane filed as a note is a finding. For each behavior finding, ask for a red test that covers every site with the same defect. Where no test can show the defect, ask for a repro receipt instead. Add that defect to the next round's review brief. The new head gets a fresh swarm and a fresh verdict, except for lane results that stay valid under the patch-id rule in `playbooks/shipping.md`.
- 5. **On a clean verdict the owner merges and takes the next item.** The owner merges only from a head freshly rebased onto trunk. Merge prep never comes before a round's lanes start, and it ends with a rebase onto current trunk right before the merge. After the merge-prep rebase, the owner reports the new head SHA. CI must pass on that head before the merge, and the patch-id rule decides whether the round's verdict still holds. If trunk moves again before the merge, the patch-id rule in `playbooks/shipping.md` governs re-verification. A new head voids the verdict unless the patch-id is unchanged. The owner squash-merges its own PR through the resolved forge and picks up its next self-contained item from the queue. The operator's full-autonomy grant plus the root's clean verdict is the merge authorization that babysitting alone never has. Operator-named items stop at merge-ready and wait for the operator's click.
--6. **Run the root layer.** A genuinely new raise of a pinned gate or budget value (a limit CI only lets tighten) needs your fresh countersign, granted only after verifier proof. If the operator's grant or standing orders cover approvals, that countersign is the approval. The owner records it in the form that the tool's approval contract allows, with a pointer to the root's countersign. A lane checks the record against that countersign. The root never gives or bypasses an approval that the forge enforces. Absorbing values that already landed on main is drift, not a raise. Run an audit tick over all owners roughly every 30 minutes. A local root arms each tick as a real terminal `/loop`. The loop uses a monitored-shell 30-minute sleep and emits an output-notification sentinel. A cloud root uses the existing cloud-sleeper wake chain instead. Never leave the cadence to memory or lossy completion notifications. At each tick, re-read this playbook from trunk with `git show origin/main:jstack/skills/j-mode/playbooks/autopilot-full.md`, then re-read the armed `/goal`. Audit the operation against both. Fix drift during that tick. Probe each owner with a generic liveness or status check, and collect the decision trails. Count only side effects as progress: commits, pushes, PR or check deltas, and store reports. Treat a lane that errors, or that passes its expected runtime without a side effect, as stuck. Stand it down and dispatch a replacement at once. Do not wait for a polite return. Each tick also runs the lane stuck test over the program's agent list, where the platform has one, and over every owner's `children.tsv`. Whether or not a stop works, the root has the owner record each stuck subagent as stuck and, if its work is still needed, replace it. Each replacement that stalls gets the same steps. The root takes both steps when the owner cannot. A stall never proves or drops the work. When merges batch, run a retro pass and a post-merge bot-comment sweep. End the tick only when no delegated work is left, even after the last merge.
-+6. **Run the root layer.** A genuinely new raise of a pinned gate or budget value (a limit CI only lets tighten) needs your fresh countersign, granted only after verifier proof. If the operator's grant or standing orders cover approvals, that countersign is the approval. The owner records it in the form that the tool's approval contract allows, with a pointer to the root's countersign. A lane checks the record against that countersign. The root never gives or bypasses an approval that the forge enforces. Absorbing values that already landed on main is drift, not a raise. Run an audit tick over all owners roughly every 30 minutes. A local root arms each tick as a real terminal `/loop`. The loop uses a monitored-shell 30-minute sleep and emits an output-notification sentinel. Never leave the cadence to memory or lossy completion notifications. At each tick, re-read this playbook with `<jstack>/skills/j-mode/playbooks/autopilot-full.md`, then re-read the armed `/goal`. Audit the operation against both. Fix drift during that tick. Probe each owner with a generic liveness or status check, and collect the decision trails. Count only side effects as progress: commits, pushes, PR or check deltas, and store reports. Treat a lane that errors, or that passes its expected runtime without a side effect, as stuck. Stand it down and dispatch a replacement at once. Do not wait for a polite return. Each tick also runs the lane stuck test over the program's agent list, where the platform has one, and over every owner's `children.tsv`. Whether or not a stop works, the root has the owner record each stuck subagent as stuck and, if its work is still needed, replace it. Each replacement that stalls gets the same steps. The root takes both steps when the owner cannot. A stall never proves or drops the work. When merges batch, run a retro pass and a post-merge bot-comment sweep. End the tick only when no delegated work is left, even after the last merge.
- 7. **Stand down instantly on the operator's stop.** The operator's hold or stand-down reaches every owner as a zero-writes order immediately. Owners hold their briefs until the operator releases them.
+ 1. **The operator's gates come first.** The grant covers only the queue's items, so items the operator names as theirs and PRs outside the queue stop at merge-ready. A request to state the plan is not a go.
+-2. **Spawn one owner per PR, and keep its work where a replacement can find it.** Resolve the forge once for the program. GitHub CLI (`gh`) is the default. If `command -v origin` succeeds and Origin can resolve the repository, use `origin pr` for every PR operation. Otherwise stay on `gh` and record the fallback. Never require Graphite (`gt`). Each owner is a Cursor cloud agent that builds, opens its PR per `playbooks/opening-a-pr.md`, proves the change on the real artifact, babysits to green per `playbooks/babysit.md`, and merges once steps 4 and 5 clear it.
++2. **Spawn one owner per PR, and keep its work where a replacement can find it.** Resolve the forge once for the program. GitHub CLI (`gh`) is the default. If `command -v origin` succeeds and Origin can resolve the repository, use `origin pr` for every PR operation. Otherwise stay on `gh` and record the fallback. Never require Graphite (`gt`). Each owner is a worktree-isolated background subagent that builds, opens its PR per `playbooks/opening-a-pr.md`, proves the change on the real artifact, babysits to green per `playbooks/babysit.md`, and merges once steps 4 and 5 clear it.
  
- **Reply:** the queue with each PR's owner, state, and head SHA. Each verdict and the swarm that produced it. What merged and what each owner took next. Countersigns granted and why. Open operator gates. Where the collected decision trails live.
-diff --git a/skills/j-mode/playbooks/autopilot-stack.md b/skills/j-mode/playbooks/autopilot-stack.md
-index 0442011..80fd433 100644
---- a/skills/j-mode/playbooks/autopilot-stack.md
-+++ b/skills/j-mode/playbooks/autopilot-stack.md
-@@ -2,8 +2,8 @@
+-   Open the PR early so CI and bots run alongside the work. The code is ready only after the slop-strip (the `deslop` skill from the `cursor-team-kit` plugin (`/deslop`)) and the `/no-comments` pass, so the full swarm runs on finished code. Then rebase onto current trunk and report the code-ready head before self-proof, so verification runs on the base the patch lands on. Report every later head, and merge-ready once self-proof, CI, and babysit are done. Fix rounds stay on that base unless trunk conflicts or breaks CI, because each rebase restarts CI. Run the repo's checks for the touched paths on the committed head before the code-ready push and before a later push that needs a verifier.
++   Open the PR early so CI and bots run alongside the work. The code is ready only after the slop-strip (`/simplify`) and the `/no-comments` pass, so the full swarm runs on finished code. Then rebase onto current trunk and report the code-ready head before self-proof, so verification runs on the base the patch lands on. Report every later head, and merge-ready once self-proof, CI, and babysit are done. Fix rounds stay on that base unless trunk conflicts or breaks CI, because each rebase restarts CI. Run the repo's checks for the touched paths on the committed head before the code-ready push and before a later push that needs a verifier.
  
- **You own the stack, never the landing. Build and verify the queue with full autonomy, then hand the operator one linear base-branch stack to review and land.** The sibling of **Autopilot-full**.
+    Assume the VM dies. Soon after starting, push and start a decision trail in the root agent's store (path in the system prompt) per the **show-me-your-work** skill, then push after every unit worth keeping. Whoever spawns a subagent records its id, state, and a stuck-after runtime from past runs of its kind in that store, so the root can probe it if the parent dies. Force-push only your own branch, with `--force-with-lease` pinned to the SHA you last pushed or took over, and on any push you did not make, stop and report to the root.
+ 3. **Run owners in parallel off trunk, never stacked,** so each PR lands on its own.
+-4. **Swarm-verify once.** A full swarm runs once, at the code-ready head. Another full swarm runs only for new behavior, a redesign, or a large new diff. A rebase, a merge-conflict resolution, or a minor fix gets a single verifier at the new head. Fan out independent verifiers at the code-ready SHA per the **swarm** skill. They re-run the gates, prove the load-bearing behavior live on the real surface through its control skill (such as `control-ui` or `control-cli` from `cursor-team-kit`) or a named driver, and audit the diff. The verdict is not clean without the live lane, or before you audit the merge-ready report's receipts, because no lane trusts a claim it has not checked.
++4. **Swarm-verify once.** A full swarm runs once, at the code-ready head. Another full swarm runs only for new behavior, a redesign, or a large new diff. A rebase, a merge-conflict resolution, or a minor fix gets a single verifier at the new head. Fan out independent verifiers at the code-ready SHA per the **swarm** skill. They re-run the gates, prove the load-bearing behavior live on the real surface through its control skill (the `run` skill for CLIs or the `chrome-devtools-mcp:chrome-devtools` skill for UIs) or a named driver, and audit the diff. The verdict is not clean without the live lane, or before you audit the merge-ready report's receipts, because no lane trusts a claim it has not checked.
  
--1. **Run the owner loop unchanged.** Resolve the forge once for the program. GitHub CLI (`gh`) is the default. If `command -v origin` succeeds and Origin can resolve the repository, use `origin pr ...` for PR create, edit, view, watch, and merge operations. Otherwise stay on `gh` and record the fallback. Never require Graphite (`gt`). One Cursor cloud agent per PR owns its change end to end: build, first push, a ready PR opened before self-proof, self-proof (gates, CI, receipts), skeptical Bugbot triage per `../references/bugbot-triage.md`, a slop-strip (the `deslop` skill from the `cursor-team-kit` plugin (`/deslop`)), `/no-comments` (the **no-comments** skill), and babysit to green per `playbooks/babysit.md`. Owners parallelize when the work is self-contained. Within about 15 minutes, every owner starts a `decisions.tsv` trail per the **show-me-your-work** skill, pushes its first branch snapshot, and opens the PR ready, never draft. Keep the trail uncommitted and return it in the report. Owners also keep the `children.tsv` of Autopilot-full step 2.
--2. **Audit on the wake chain.** The root runs an audit tick roughly every 30 minutes. A local root arms each tick as a real terminal `/loop`. The loop uses a monitored-shell 30-minute sleep and emits an output-notification sentinel. A cloud root uses the existing cloud-sleeper wake chain instead. Never leave the cadence to memory or lossy completion notifications. At each tick, re-read this playbook from trunk with `git show origin/main:jstack/skills/j-mode/playbooks/autopilot-stack.md`, then re-read the armed `/goal`. Audit the operation against both. Fix drift during that tick. Probe each owner with a generic liveness or status check. Count only side effects as progress: commits, pushes, PR or check deltas, and store reports. Treat a lane that passes its expected runtime without a side effect as stuck. Stand it down and dispatch a replacement at once. Do not wait for a polite return. Probe all subagents and end the tick per Autopilot-full step 6.
-+1. **Run the owner loop unchanged.** Resolve the forge once for the program. GitHub CLI (`gh`) is the default. If `command -v origin` succeeds and Origin can resolve the repository, use `origin pr ...` for PR create, edit, view, watch, and merge operations. Otherwise stay on `gh` and record the fallback. Never require Graphite (`gt`). One worktree-isolated background subagent per PR owns its change end to end: build, first push, a ready PR opened before self-proof, self-proof (gates, CI, receipts), skeptical Bugbot triage per `../references/bugbot-triage.md`, a slop-strip (`/simplify`), `/no-comments` (the **no-comments** skill), and babysit to green per `playbooks/babysit.md`. Owners parallelize when the work is self-contained. Within about 15 minutes, every owner starts a `decisions.tsv` trail per the **show-me-your-work** skill, pushes its first branch snapshot, and opens the PR ready, never draft. Keep the trail uncommitted and return it in the report. Owners also keep the `children.tsv` of Autopilot-full step 2.
-+2. **Audit on the wake chain.** The root runs an audit tick roughly every 30 minutes. A local root arms each tick as a real terminal `/loop`. The loop uses a monitored-shell 30-minute sleep and emits an output-notification sentinel. Never leave the cadence to memory or lossy completion notifications. At each tick, re-read this playbook with `<jstack>/skills/j-mode/playbooks/autopilot-stack.md`, then re-read the armed `/goal`. Audit the operation against both. Fix drift during that tick. Probe each owner with a generic liveness or status check. Count only side effects as progress: commits, pushes, PR or check deltas, and store reports. Treat a lane that passes its expected runtime without a side effect as stuck. Stand it down and dispatch a replacement at once. Do not wait for a polite return. Probe all subagents and end the tick per Autopilot-full step 6.
- 3. **Hold the operator gates.** State-then-wait, so a request to state the plan is not a go. On the operator's explicit go, arm a `/goal` with the full program objective. The goal continues across turns until the chain is done. On the operator's stop, every owner takes an immediate zero-writes hold.
- 4. **Verify each round.** The owner reports its code-ready head SHA once the shipped code is final, and STACK-READY with the exact head SHA when its loop is green. The root verifies each round per Autopilot-full step 4, with STACK-READY in place of merge-ready. Nothing enters the stack unverified.
- 5. **Append on a clean verdict, never ship.** No owner merges, arms auto-merge, or closes. A clean verdict appends the PR to the one linear base-branch stack, in verified order or an order the operator specified.
+    Send every proven finding, whatever a lane labeled it, to the owner in one fix-forward, with a red test across every site with the same defect. A defect trunk shows without the PR is recorded against trunk and does not gate the PR, but one the PR copies or newly reaches is the PR's own. Never push a fix yourself, because each branch has one writer. Replace a stuck owner instead.
+ 5. **The owner merges only what you verified, tested on the trunk it lands on.** Green CI alone never authorizes a merge. Once the swarm's lanes have started, merge prep rebases onto current trunk, reports the new head, and waits for green CI.
 diff --git a/skills/j-mode/playbooks/babysit.md b/skills/j-mode/playbooks/babysit.md
-index 3c71b1e..2fe331d 100644
+index 3d0cd38..e0f706f 100644
 --- a/skills/j-mode/playbooks/babysit.md
 +++ b/skills/j-mode/playbooks/babysit.md
 @@ -9,7 +9,7 @@ Babysitting starts when the user asks for it, which is normally once a phase or
@@ -89,7 +76,7 @@ index 3c71b1e..2fe331d 100644
     Stop conditions are forge-specific. On Origin, stop `drive` when the frontier is merge-ready: checks are green, `origin pr view` reports mergeable with no blockers, and `origin pr thread list` has no unresolved blockers. Origin does not wait for `READY`, `WAITING`, `ADVANCE`, or `COMPLETE`. Those are GitHub watcher verdicts.
  
 diff --git a/skills/j-mode/playbooks/bug-fix.md b/skills/j-mode/playbooks/bug-fix.md
-index 18dbbd8..6c20ce9 100644
+index cecb416..582ac1c 100644
 --- a/skills/j-mode/playbooks/bug-fix.md
 +++ b/skills/j-mode/playbooks/bug-fix.md
 @@ -5,7 +5,7 @@
@@ -102,12 +89,12 @@ index 18dbbd8..6c20ce9 100644
  4. Verify on the same surface. The original repro now passes. "Inconclusive" or wrong-surface is not a pass. Flag it. Unit tests show branch behavior, not bug absence.
  5. Stage the commits so the failing repro lands before the fix in git history. See the **tdd** skill for the failing-test-first cadence when the bug has a cheap local test path. Skip it when the test would be expensive, integration-heavy, or unclear.
 diff --git a/skills/j-mode/playbooks/eval.md b/skills/j-mode/playbooks/eval.md
-index 3dae34e..f594d74 100644
+index 768a894..e856c52 100644
 --- a/skills/j-mode/playbooks/eval.md
 +++ b/skills/j-mode/playbooks/eval.md
 @@ -19,7 +19,7 @@
  3. **Author one organic prompt.** What a user would type. No leakage of what's being measured.
- 4. **Spawn N parallel candidates** on different models per the **arena** skill's Phase B. Each works in its own sanitized dir. Same prompt to each.
+ 4. **Spawn N parallel candidates** on different models per the **arena** skill's Phase B. Each works in its own sanitized dir. Same prompt to each. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section.
  5. **Spawn one blinded judge** on a different model family per the **arena** skill's Phase C. Judge sees outputs by sanitized label and the rubric, never a model name.
 -6. **Verify the chain from transcripts, not self-report.** Read each candidate's local transcript under the active workspace's `agent-transcripts/` directory (the system prompt names this path). Do not glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects. Look at which files each candidate actually opened. Grade chain-following from the files it really read plus the shape of the code, never from the candidate's own claims.
 +6. **Verify the chain from transcripts, not self-report.** Read each candidate's transcript in this project's Claude Code transcripts: `~/.claude/projects/<slug>/<session-id>.jsonl`, with subagents under `<slug>/<session-id>/subagents/agent-*.jsonl`. `<slug>` is the project's real path (`pwd -P`) with every character other than a letter or digit turned into `-` (`/Users/you/proj` → `-Users-you-proj`). Each line is a JSON object; chat messages are the lines whose `type` is `user` or `assistant` (read them with `jq`). Don't glob across `~/.claude/projects/*/`: that crosses project boundaries and reads private chats from unrelated projects. Look at which files each candidate actually opened. Grade chain-following from the files it really read plus the shape of the code, never from the candidate's own claims.
@@ -115,11 +102,11 @@ index 3dae34e..f594d74 100644
  
  **Reply:** variant under test, rubric, per-candidate notes, judge's verdict, your synthesis, and a recommendation for whether to promote the variant.
 diff --git a/skills/j-mode/playbooks/multi-phase-plan.md b/skills/j-mode/playbooks/multi-phase-plan.md
-index 6f49bb2..405113e 100644
+index 08c9014..e7b8cd5 100644
 --- a/skills/j-mode/playbooks/multi-phase-plan.md
 +++ b/skills/j-mode/playbooks/multi-phase-plan.md
 @@ -7,7 +7,7 @@
- 3. Explore in subagents with `subagent_type: "j-agent"` and an explicit model per the Subagents section (the **principle-guard-the-context-window** skill). Each returns file pointers, conventions, test commands, and entry points. No inlined dumps.
+ 3. Explore in subagents with `subagent_type: "j-agent"` and an explicit model per the Subagents section (the **principle-guard-the-context-window** skill). Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section. Each returns file pointers, conventions, test commands, and entry points. No inlined dumps.
  4. Copy the skeleton below into the plan file and fill every placeholder. Unless the operator names a path, write the file under the agent store's `docs/`. Keep every heading and every sub-block in the order shown. One section per PR. One PR is one change with its own evidence (the **principle-sequence-verifiable-units** skill). Name the execution playbook in **How to read this**. Pick between `playbooks/autopilot-full.md` and `playbooks/autopilot-stack.md` per the rule at the end of `playbooks/autopilot-stack.md`. A standing program takes `playbooks/orchestrate.md`.
  5. Write under `/technical-writing` in full, then `/unslop`. The body is one Diátaxis mode, how-to. Appendices hold explanation and reference. Each heading states the task or the finding. No long dashes. No mid-sentence colons.
 -6. Run `node jstack/skills/j-mode/scripts/check-plan.mjs <plan.md>` and fix every line it prints (the **principle-encode-lessons-in-structure** skill).
@@ -136,9 +123,9 @@ index 6f49bb2..405113e 100644
  
  Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
  
-@@ -34,12 +34,12 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
+@@ -33,11 +33,11 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
+ 
  - [ ] State the protocol and this plan to the operator, then stop. Start execution only on the operator's explicit go.
- - [ ] On the operator's go, arm a `/goal` with this exact text. "<The plan path, the PR ids in order, the verification rule, who merges, and the done condition.>"
  - [ ] Read these from trunk at program start. Re-read them at every tick.
 -  - [ ] `git show origin/main:jstack/skills/j-mode/playbooks/<execution playbook>.md`
 -  - [ ] `git show origin/main:jstack/skills/swarm/SKILL.md`
@@ -147,20 +134,18 @@ index 6f49bb2..405113e 100644
    - [ ] `git show origin/main:<control skill path>`
 -  - [ ] `git show origin/main:jstack/skills/j-mode/playbooks/opening-a-pr.md`
 -  - [ ] `git show origin/main:jstack/skills/<each other leaf skill the program uses>`
--- [ ] Arm the 30-minute audit tick. In a local session, a real terminal `/loop`. In a cloud root, a cloud-sleeper wake chain. Never leave the cadence to memory.
 +  - [ ] `<jstack>/skills/j-mode/playbooks/opening-a-pr.md`
 +  - [ ] `<jstack>/skills/<each other leaf skill the program uses>`
-+- [ ] Arm the 30-minute audit tick. A real terminal `/loop`. Never leave the cadence to memory.
- - [ ] Use this tick prompt, verbatim. "Re-read the execution playbook from trunk and the armed /goal. Audit the operation against both and fix drift in this tick. Probe every active lane and judge progress by side effects only. Stand down a stuck lane and dispatch its replacement now. Then post a short status message to the operator in chat only when the audit found a tracked change that no earlier status message reported, such as a PR opened, a code-ready head, a round launched or closed, a verdict, a merge, a stuck agent and the action taken, a blocker added or cleared, or a decision only the operator can make. Name every such change and nothing else. Do not repeat a table, the merged list, or an unchanged blocker. If the audit found none, end the turn with no reply text. Either way, log this tick's row in your decision trail. The row names the items reported, or none."
+ - [ ] On the operator's go, arm the audit tick as `/loop 1h` with the tick prompt below. Never leave the cadence to memory.
+ - [ ] Use this tick prompt, verbatim. "Re-read the execution playbook from trunk. Audit the operation against it and fix drift in this tick. Probe every active lane and judge progress by side effects only. Stand down a stuck lane and dispatch its replacement now. Then post a short status message to the operator in chat only when the audit found a tracked change that no earlier status message reported, such as a PR opened, a code-ready head, a round launched or closed, a verdict, a merge, a stuck agent and the action taken, a blocker added or cleared, or a decision only the operator can make. Name every such change and nothing else. Do not repeat a table, the merged list, or an unchanged blocker. If the audit found none, end the turn with no reply text. Either way, log this tick's row in your decision trail. The row names the items reported, or none."
  - [ ] On the operator's hold or stand-down, send every owner a zero-writes order at once.
- 
-@@ -63,13 +63,13 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
+@@ -62,13 +62,13 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
  
  ### Verdict and merge, for every PR
  
--- [ ] At the code-ready head SHA and at each later push that changes the patch, run the swarm per `jstack/skills/swarm/SKILL.md`. One gates lane. The ten live lanes from the PR's **Verify, live** block. The perf lane from its **Verify, perf** block. Two or more audit lanes, each with its own focus, that read the diff and the receipts and distrust the PR body. The root audits the receipts in the merge-ready report before the verdict.
-+- [ ] At the code-ready head SHA and at each later push that changes the patch, run the swarm per `<jstack>/skills/swarm/SKILL.md`. One gates lane. The ten live lanes from the PR's **Verify, live** block. The perf lane from its **Verify, perf** block. Two or more audit lanes, each with its own focus, that read the diff and the receipts and distrust the PR body. The root audits the receipts in the merge-ready report before the verdict.
- - [ ] Clean only when every lane is `PASS`. Findings go back to the owner, including a defect that a lane filed as a note. A new head gets a fresh swarm and a fresh verdict, except for results that stay valid under the patch-id rule in `playbooks/shipping.md`.
+-- [ ] A full swarm runs once, at the code-ready head. Another full swarm runs only for new behavior, a redesign, or a large new diff. A rebase, a merge-conflict resolution, or a minor fix gets a single verifier at the new head. Run each full swarm per `jstack/skills/swarm/SKILL.md`. One gates lane. The ten live lanes from the PR's **Verify, live** block. The perf lane from its **Verify, perf** block. Two or more audit lanes, each with its own focus, that read the diff and the receipts and distrust the PR body. The root audits the receipts in the merge-ready report before the verdict.
++- [ ] A full swarm runs once, at the code-ready head. Another full swarm runs only for new behavior, a redesign, or a large new diff. A rebase, a merge-conflict resolution, or a minor fix gets a single verifier at the new head. Run each full swarm per `<jstack>/skills/swarm/SKILL.md`. One gates lane. The ten live lanes from the PR's **Verify, live** block. The perf lane from its **Verify, perf** block. Two or more audit lanes, each with its own focus, that read the diff and the receipts and distrust the PR body. The root audits the receipts in the merge-ready report before the verdict.
+ - [ ] Clean only when every lane is `PASS`. Findings go back to the owner, including a defect that a lane filed as a note. A new head gets a fresh verdict, except for results that stay valid under the patch-id rule in `playbooks/shipping.md`.
  - [ ] <The merge or append rule from the execution playbook, with the patch-id rule from `playbooks/shipping.md`.>
  
  ### Boot recipe, for every live lane
@@ -170,7 +155,7 @@ index 6f49bb2..405113e 100644
  
  - [ ] `git fetch origin <head-branch> && git checkout <head SHA>`.
  - [ ] <Start the backend and the surface. Wait for ready.>
-@@ -150,7 +150,7 @@ Each live lane runs on its own cloud VM at the PR head. Drive through the `chrom
+@@ -149,7 +149,7 @@ Each live lane runs on its own cloud VM at the PR head. Drive through the `chrom
  
  ## Appendix D. Links and reading list
  
@@ -180,19 +165,19 @@ index 6f49bb2..405113e 100644
  
  **Reply:** the plan path, the PR ids with their dependencies and the review-gated set, what the prototypes proved and what stays unproven, and the check script's output.
 diff --git a/skills/j-mode/playbooks/orchestrate.md b/skills/j-mode/playbooks/orchestrate.md
-index 1caab17..6fdf5a0 100644
+index ca4cfbd..d4224ce 100644
 --- a/skills/j-mode/playbooks/orchestrate.md
 +++ b/skills/j-mode/playbooks/orchestrate.md
 @@ -14,7 +14,7 @@ Three rules carry the rest.
  
- - **Coordinator (this chat).** Local. Frames, authors briefs, drains the inbox, owns the human report, makes judgment calls. It never authors or edits code. Conflicted merges, restacks, and code changes are always tasks. Mechanically landing a verified unit (fast-forward or clean cherry-pick of a worker's commit, then push) is bookkeeping the coordinator may do itself on repos where local git is cheap. Queueing finished work behind an idle stacker is how a deadline harvests nothing. The loop is agentic end to end. Agents are spawned, resumed, and drained only through the Agent tool. State reads and writes go through `scripts/orch/orch.ts` at drain points, one command in and one line out. The CLI never spawns, waits, or wakes anything.
+ - **Coordinator (this chat).** Local. Frames, authors briefs, drains the inbox, owns the human report, makes judgment calls. It never authors or edits code. Conflicted merges, chain rebases, and code changes are always tasks. Mechanically landing a verified unit (fast-forward or clean cherry-pick of a worker's commit, then push) is bookkeeping the coordinator may do itself on repos where local git is cheap. Queueing finished work behind an idle stacker is how a deadline harvests nothing. The loop is agentic end to end. Agents are spawned, resumed, and drained only through the Agent tool. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section. State reads and writes go through `scripts/orch/orch.ts` at drain points, one command in and one line out. The CLI never spawns, waits, or wakes anything.
  - **Sub-coordinator.** Always local, durable, one per track, and only when the program exceeds what one coordinator's drains can manage. A track the coordinator can drain itself needs no middle layer. Each nested layer re-pays a full orientation preamble, and a blocking sub-coordinator hides its children while the parent idles. Owns its track's units and boards, authors its workers' briefs, spawns its own workers and verifiers (nesting works to depth 3, and a nested spawn has the full Task schema including `environment`). Rolls up aggregates at wave boundaries. Never forwards raw child reports. Cap in-flight children at what one drain can process, roughly ten, as a rolling window. Never as blocking batches, which cost the slowest child of every batch.
 -- **Worker / verifier.** Always `environment: "cloud"` unless the task needs this machine: `control-ui` or `control-cli` runtime verification (from `cursor-team-kit`). Reading local transcripts under `agent-transcripts/`. Simulators and local IDE state. Auth that exists only here. Cloud agents cannot read the local store, so their briefs inline what they need or point at repo paths. Prefer fewer, broader workers. One writer per worktree or branch (principle-separate-before-serializing-shared-state). Run a unit's verifier on a different model family from its worker.
 +- **Worker / verifier.** A background subagent with `isolation: "worktree"`, so each gets its own checkout. Work that needs the shared checkout instead (runtime verification through the `chrome-devtools-mcp:chrome-devtools` or `run` skill, simulators and local IDE state) runs without isolation, one at a time. Briefs inline what a worker needs or point at repo paths. Prefer fewer, broader workers. One writer per worktree or branch (principle-separate-before-serializing-shared-state). Run a unit's verifier on a different model family from its worker.
  
  Depth stays at coordinator, track, worker. Author the track decomposition per project (build, landing, and verification are common cuts, not a required shape). Hard-coded swarm trees were tried and parked as too rigid.
  
-@@ -49,9 +49,9 @@ REPORT       status, branch, head SHA, PRs, verdict, what you actually ran, devi
+@@ -50,9 +50,9 @@ REPORT       status, branch, head SHA, PRs, verdict, what you actually ran, devi
  STANDING     <preferences.md pasted verbatim>
  ```
  
@@ -204,16 +189,16 @@ index 1caab17..6fdf5a0 100644
  
  A dependency is a context relay, not just ordering. Undeclared upstream context makes the worker guess. Missing fields are a refuse-to-spawn condition. Audit one sampled worker brief per sub-coordinator per wave, concurrently with the wave it samples, never as a gate in front of it. A failing brief stops that track and fixes the sub-coordinator's instructions, not just the worker, because brief quality decays late in a run. Never resume-chain a brief. Respawn fresh with consolidated scope.
  
-@@ -77,7 +77,7 @@ A dependency is a context relay, not just ordering. Undeclared upstream context
+@@ -78,7 +78,7 @@ A dependency is a context relay, not just ordering. Undeclared upstream context
  #### Stack safety
  
- - The frontier is a computed object, never narrative. Recompute `frontier.json` from `gt` after every merge and stack mutation because GitHub base refs drift mid-restack while gt tracking is authoritative: ordered PR list, branch names, head SHAs, a generation number, the lowest unmerged PR. Resolve it where gt knows the stack, normally the stacker's clone. A checkout whose gt metadata never saw the submits reports no PRs and the command errors rather than guessing.
--- Exactly one stacker per stack may run `gt`, serialized within its stack. Record the holder in the standing orders. Restacks run in cloud. A local restack at this scale takes the laptop down.
-+- Exactly one stacker per stack may run `gt`, serialized within its stack. Record the holder in the standing orders. Restacks run in their own worktree, one at a time; parallel restacks at this scale take the laptop down.
- - Workers never rebase and never run `gt`. Babysitters follow `playbooks/babysit.md`, one per stack, scoped to one immutable frontier generation. They report conflicts to the stacker rather than restacking.
+ - The frontier is a computed object, never narrative. Recompute `frontier.json` after every merge and stack mutation: ordered PR list, branch names, head SHAs, a generation number, the lowest unmerged PR. The command walks the PR base chain through the checkout's current branch, so chain order and PR states come from the forge. It uses `gh` by default. Pass `--forge origin` when the program resolved the forge to Origin. Head SHAs come from local branch refs, so resolve it from the stacker's clone. A branch with no PR errors rather than guessing.
+-- Exactly one stacker per stack may mutate topology (chain rebases, force-pushes, base retargets, merges), serialized within its stack. Record the holder in the standing orders. Chain rebases run in cloud. A local rebase at this scale takes the laptop down.
++- Exactly one stacker per stack may mutate topology (chain rebases, force-pushes, base retargets, merges), serialized within its stack. Record the holder in the standing orders. Chain rebases run in their own worktree, one at a time; parallel rebases at this scale take the laptop down.
+ - Workers never rebase and never retarget or merge PRs. Babysitters follow `playbooks/babysit.md`, one per stack, scoped to one immutable frontier generation. They report conflicts to the stacker rather than rebasing.
  - PR closes and retargets go through the stacker only. Closing a base PR orphans every chain above it. Merges and stack surgery are units with briefs like any other.
  - One retro watcher follows merged PRs for reverts, post-merge CI breaks, and orphaned follow-ups.
-@@ -92,13 +92,13 @@ A unit is not done until its output is externalized the moment it lands, never b
+@@ -93,13 +93,13 @@ A unit is not done until its output is externalized the moment it lands, never b
  
  #### Liveness and failure
  
@@ -230,43 +215,42 @@ index 1caab17..6fdf5a0 100644
  #### Escalation
  
 diff --git a/skills/j-mode/playbooks/session-pickup.md b/skills/j-mode/playbooks/session-pickup.md
-index 9b2ed06..5589d37 100644
+index 876b143..3e11e2c 100644
 --- a/skills/j-mode/playbooks/session-pickup.md
 +++ b/skills/j-mode/playbooks/session-pickup.md
 @@ -2,7 +2,7 @@
  
  **You own the resume point. Read the prior trail, don't redo it.**
  
--1. Locate the prior trail. A local transcript under the active workspace's `agent-transcripts/` directory (the system prompt names the path. Do not glob across `~/.cursor/projects/*/`, that crosses workspace boundaries and reads private chats from unrelated projects), a cloud-agent URL, or a pushed branch. Read the metadata overview and last messages first, then scan back for the decision points. Parse a long transcript in a subagent and keep the reduced timeline in the main thread (the **principle-guard-the-context-window** skill).
-+1. Locate the prior trail. A transcript in this project's Claude Code transcripts: `~/.claude/projects/<slug>/<session-id>.jsonl`, with subagents under `<slug>/<session-id>/subagents/agent-*.jsonl`. `<slug>` is the project's real path (`pwd -P`) with every character other than a letter or digit turned into `-` (`/Users/you/proj` → `-Users-you-proj`). Each line is a JSON object; chat messages are the lines whose `type` is `user` or `assistant` (read them with `jq`). Don't glob across `~/.claude/projects/*/`: that crosses project boundaries and reads private chats from unrelated projects. Or a pushed branch. Read the metadata overview and last messages first, then scan back for the decision points. Parse a long transcript in a subagent and keep the reduced timeline in the main thread (the **principle-guard-the-context-window** skill).
+-1. Locate the prior trail. A local transcript under the active workspace's `agent-transcripts/` directory (the system prompt names the path. Do not glob across `~/.cursor/projects/*/`, that crosses workspace boundaries and reads private chats from unrelated projects), a cloud-agent URL, or a pushed branch. Read the metadata overview and last messages first, then scan back for the decision points. Parse a long transcript in a subagent and keep the reduced timeline in the main thread (the **principle-guard-the-context-window** skill). Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section.
++1. Locate the prior trail. A transcript in this project's Claude Code transcripts: `~/.claude/projects/<slug>/<session-id>.jsonl`, with subagents under `<slug>/<session-id>/subagents/agent-*.jsonl`. `<slug>` is the project's real path (`pwd -P`) with every character other than a letter or digit turned into `-` (`/Users/you/proj` → `-Users-you-proj`). Each line is a JSON object; chat messages are the lines whose `type` is `user` or `assistant` (read them with `jq`). Don't glob across `~/.claude/projects/*/`: that crosses project boundaries and reads private chats from unrelated projects. Or a pushed branch. Read the metadata overview and last messages first, then scan back for the decision points. Parse a long transcript in a subagent and keep the reduced timeline in the main thread (the **principle-guard-the-context-window** skill). Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section.
  2. Reconstruct operational state. The branch and worktree, what already landed (`git log`, `git diff` against the base), the open todos, the decisions made. The prior trail is authoritative input. Resist the bias to re-derive it.
  3. Diff done vs pending. Compare what shipped against what was planned, name the resume point, do not re-run the prior repro or redo completed work. A "let me verify from scratch" pass means you're treating the trail as untrustworthy when it's authoritative.
  4. Route the remaining work to the matching playbook and pick the verdict: continue the execution, ship a finished recommendation, ratify or override a prior conclusion, or postmortem a failed run. The pickup playbook ends here. The routed playbook owns the rest.
 diff --git a/skills/j-mode/playbooks/shipping.md b/skills/j-mode/playbooks/shipping.md
-index 0f1d41f..d599c35 100644
+index 0a0c3cf..61946cd 100644
 --- a/skills/j-mode/playbooks/shipping.md
 +++ b/skills/j-mode/playbooks/shipping.md
-@@ -4,7 +4,7 @@
+@@ -2,7 +2,7 @@
  
- This is the half after `playbooks/babysit.md`.
+ **You own what lands. Verify each PR independently, land only the verified run from the root, then keep your hands off the stack.**
  
--1. **Resolve the forge, then verify every PR independently.** GitHub CLI (`gh`) is the default. If `command -v origin` succeeds and Origin can resolve the repository, use `origin pr ...` for PR view, watch, edit, and merge operations. Otherwise stay on `gh` and record the fallback. Never require Graphite (`gt`). One subagent per PR, not batched, each a Cursor cloud agent, each exercising the real surface with the matching control skill (such as `control-ui` or `control-cli` from `cursor-team-kit`) against parent versus head. Each returns `PASS`, `PASS+NOTES` or `FAIL` and posts that verdict on its own PR. Safe means a verdict from an agent that did not write the code. CI green is not a verdict, and an approving bot review is not a verdict.
-+1. **Resolve the forge, then verify every PR independently.** GitHub CLI (`gh`) is the default. If `command -v origin` succeeds and Origin can resolve the repository, use `origin pr ...` for PR view, watch, edit, and merge operations. Otherwise stay on `gh` and record the fallback. Never require Graphite (`gt`). One subagent per PR, not batched, each a worktree-isolated background subagent, each exercising the real surface with the matching control skill (the `chrome-devtools-mcp:chrome-devtools` skill for UIs, the `run` skill for CLIs) against parent versus head. Each returns `PASS`, `PASS+NOTES` or `FAIL` and posts that verdict on its own PR. Safe means a verdict from an agent that did not write the code. CI green is not a verdict, and an approving bot review is not a verdict.
- 2. **Land only the contiguous verified run rooted at the bottom.** Walk up from the lowest unmerged PR and stop at the first one without a passing verdict, where both `PASS` and `PASS+NOTES` pass. A verified PR sitting above an unverified one is not landable. Report the ceiling as a PR number and say what breaks the chain.
- 3. **Re-check that each verdict still describes the patch.** Record the verdict head SHA, base SHA, and stable `git patch-id` of that PR's base-to-head diff. A rebase or base retarget rewrites SHAs and can silently invalidate a verdict without touching a check. Before landing a PR, compare the recorded patch-id with its current base-to-head patch-id. When the two patches differ only in tests, docs, or lint config, build what each lane ran. Build it twice at the verdict SHA and once at the current head. A difference is noise if the two builds at the verdict SHA also show it, or if it is an embedded commit SHA. Judge each difference, not each file, and report each kind of noise with its files. If only noise differs, that lane's result stays valid, and checks and a review of the change run fresh. Do not reuse a lane result from a dev server or from anything else with no build output. Rerun that lane. Re-verify anything else when the patch changed. When it did not, keep the code verdict but re-run mergeability and CI at the current head. Never use matching commit messages or a green check from an older SHA as a substitute.
- 4. **Prepare only the bottom PR.** Fetch current trunk. Rebase the lowest verified branch onto the exact trunk tip when needed, push it, and retarget only that PR to trunk with `origin pr edit <pr> --base <trunk>` or `gh pr edit <pr> --base <trunk>`. Re-run step 3 after the push. Do not retarget, arm, or merge descendants yet.
+-1. **Resolve the forge, then verify each PR independently before it lands.** GitHub CLI (`gh`) is the default. If `command -v origin` succeeds and Origin can resolve the repository, use `origin pr` for every PR operation. Otherwise stay on `gh` and record the fallback. Never require Graphite (`gt`). One verifier per PR, each a Cursor cloud agent, runs the change the way a user would with the matching control skill (such as `control-ui` or `control-cli` from `cursor-team-kit`), parent against head, and posts `PASS`, `PASS+NOTES`, or `FAIL` on that PR. Only a verdict from an agent that did not write the code counts, because an author checks what it meant to build. Green CI and an approving bot review are not verdicts, because neither runs the change as a user would.
++1. **Resolve the forge, then verify each PR independently before it lands.** GitHub CLI (`gh`) is the default. If `command -v origin` succeeds and Origin can resolve the repository, use `origin pr` for every PR operation. Otherwise stay on `gh` and record the fallback. Never require Graphite (`gt`). One verifier per PR, each a worktree-isolated background subagent, runs the change the way a user would with the matching control skill (the `run` skill for CLIs or the `chrome-devtools-mcp:chrome-devtools` skill for UIs), parent against head, and posts `PASS`, `PASS+NOTES`, or `FAIL` on that PR. Only a verdict from an agent that did not write the code counts, because an author checks what it meant to build. Green CI and an approving bot review are not verdicts, because neither runs the change as a user would.
+ 2. **Land only the contiguous verified run rooted at the bottom.** Walk up from the lowest unmerged PR and stop at the first one without `PASS` or `PASS+NOTES`. The PRs below it are the run, and the top one is the ceiling. A verified PR above an unverified one waits, because it cannot land without the code below it. One whose branch neither holds nor needs that code can move onto trunk and land on its own. It needs a fresh verdict first, because its old one ran with that code beneath it and trunk does not have it.
+ 3. **Re-check that the verdicts still describe the code.** A verdict covers a patch, and a chain rebase moves every PR above it to a new SHA without failing any check. Compare `git patch-id` at the verdict SHA with the current head before trusting an older verdict. When the patches differ only in tests, docs, or lint config, a lane's result stands if what it ran builds the same at both SHAs apart from noise. Noise is a difference that also shows up between two builds of the verdict SHA, or an embedded commit SHA. Report each kind of noise with its files, so a reader can check the call. The change itself still gets fresh checks and a review, because the old verdict never saw it. A lane with no build output, such as a dev server, cannot show this, so rerun it, and re-verify anything else that drifted.
+ 4. **Land bottom-up, one PR at a time.** Always merge the run's lowest unmerged PR, with `origin pr merge <pr>` or `gh pr merge <pr> --squash`. On Origin the plain command also merges every PR below the one you name, and on GitHub a PR whose base is still its parent's branch merges into that branch, not trunk. Read the PR back for the result (`origin pr view <pr>` or `gh pr view <pr> --json state,mergedAt,baseRefName`), because a merge command can report success when a merge queue only queued the PR, and a requested auto-merge is not a merge. A landed PR reads merged with trunk as its base, not its parent's branch. Arm `--auto` (Origin merge-when-ready or GitHub auto-merge) only on a PR whose verdict covers its current head, because it lands whatever head is ready. After a merge lands, retarget the PR whose base was the merged branch to trunk (`origin pr edit <pr> --base <trunk>` or `gh pr edit <pr> --base <trunk>`), move its patch onto the merge result, and push with `--force-with-lease`. The verdict covers the patch, not its commits, so step 3's patch-id rule decides whether the verdict survives. Merge it once its checks pass and its verdict survives.
 diff --git a/skills/j-mode/playbooks/worktree-cleanup.md b/skills/j-mode/playbooks/worktree-cleanup.md
-index 39c9ef9..90e04d6 100644
+index 45e1af6..e98403d 100644
 --- a/skills/j-mode/playbooks/worktree-cleanup.md
 +++ b/skills/j-mode/playbooks/worktree-cleanup.md
-@@ -2,12 +2,12 @@
+@@ -1,11 +1,11 @@
+ ### Worktree and simulator cleanup
  
- **You own the disk and the safety gate.** Prune merged or abandoned git worktrees and stale iOS simulators to reclaim space. Deletion is irreversible, so every step guards against deleting something in use or holding uncommitted work.
- 
--1. Snapshot and audit. Record `df -h /`, then run `scripts/worktree-audit.sh` (principle-build-the-lever). It reads paths from `git worktree list`, never hand-typed, since a hand-typed `myrepo-worktrees/x` misses one that lives at `.cursor/worktrees/myrepo/x` (principle-encode-lessons-in-structure). It classifies each worktree by size, age, merge state, uncommitted work, PR state, and the newest chat that touched it, then suggests a bucket. The transcript scan is slow, so background it.
-+1. Snapshot and audit. Record `df -h /`, then run `<jstack>/skills/j-mode/scripts/worktree-audit.sh` (principle-build-the-lever). It reads paths from `git worktree list`, never hand-typed, since a hand-typed `myrepo-worktrees/x` misses one that lives at `.claude/worktrees/x` (principle-encode-lessons-in-structure). It classifies each worktree by size, age, merge state, uncommitted work, PR state, and the newest chat that touched it, then suggests a bucket. The transcript scan is slow, so background it.
+-1. Snapshot and audit. Record `df -h /`, then run `scripts/worktree-audit.sh [-b <pr-base-ref>] [repo-path]` (principle-build-the-lever). Without `-b` it checks `MERGED` against `origin/HEAD`, so pass `-b origin/<branch>` when PRs target another branch. It reads paths from `git worktree list`, never hand-typed, since a hand-typed `myrepo-worktrees/x` misses one that lives at `.cursor/worktrees/myrepo/x` (principle-encode-lessons-in-structure). It classifies each worktree by size, age, merge state, uncommitted work, PR state, and the newest chat that touched it, then suggests a bucket. The transcript scan is slow, so background it.
++1. Snapshot and audit. Record `df -h /`, then run `<jstack>/skills/j-mode/scripts/worktree-audit.sh [-b <pr-base-ref>] [repo-path]` (principle-build-the-lever). Without `-b` it checks `MERGED` against `origin/HEAD`, so pass `-b origin/<branch>` when PRs target another branch. It reads paths from `git worktree list`, never hand-typed, since a hand-typed `myrepo-worktrees/x` misses one that lives at `.cursor/worktrees/myrepo/x` (principle-encode-lessons-in-structure). It classifies each worktree by size, age, merge state, uncommitted work, PR state, and the newest chat that touched it, then suggests a bucket. The transcript scan is slow, so background it.
  2. The bucket is advice, not permission. The pinned and active chats are the real artifact (principle-prove-it-works). Get that set from the user or sidebar and cross-check every candidate. The lever has marked `safe` a worktree the user had pinned, so the pinned set wins.
- 3. Verify usage before deleting. For every `verify-recent-chat` row, or anything you doubt, fan subagents out to read the transcripts and report whether the chat is pinned or ongoing and which worktrees it touches (principle-guard-the-context-window, transcripts are bulk). A pinned chat spawns arena and repro trees into sibling worktrees via background subagents, and those are in use even when their names never hit the sidebar.
+ 3. Verify usage before deleting. For every `verify-recent-chat` row, or anything you doubt, fan subagents out to read the transcripts and report whether the chat is pinned or ongoing and which worktrees it touches (principle-guard-the-context-window, transcripts are bulk). A pinned chat spawns arena and repro trees into sibling worktrees via background subagents, and those are in use even when their names never hit the sidebar. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section.
  4. Pause on irreversible loss. `wip:N` is N tracked uncommitted edits. Show the diff and get a decision first, since removing a clean worktree is recoverable from its branch but uncommitted work is gone. `scratch:N` is untracked throwaway, safe to drop, but name the files. Per Autonomy, clean and merged and not-in-use proceeds. `wip` and in-use pause.
  5. Prune the confirmed set. Per path, `git worktree remove --force <path>`. If the dir survives on ignored build artifacts, `rm -rf` it, then `git worktree prune`. Branch refs survive, so no commits are lost. Confirm with `df -h /` and re-list.
 -6. Simulators and other reclaimers. Simulators are usually the next-biggest win. `xcrun simctl --set testing delete all` (XCTestDevices clones), `xcrun simctl delete unavailable`, and `xcrun simctl runtime list` then `runtime delete <id>` for old runtimes. More when needed: Xcode `DerivedData` and `iOS DeviceSupport`, `~/Library/Application Support/Cursor` (`state.vscdb.backup`, and `snapshots/roots/<root>` where a `<root>` named for a folder you opened as a workspace balloons), package caches (pnpm, uv, brew, yarn). Clear only caches the user has not said to keep.
@@ -275,12 +259,12 @@ index 39c9ef9..90e04d6 100644
  This is the one playbook that deletes user state with no code review to catch a slip, so the gates above are the review.
  
 diff --git a/skills/j-mode/scripts/worktree-audit.sh b/skills/j-mode/scripts/worktree-audit.sh
-index b9af081..ee69758 100755
+index 47e0891..fc05ad5 100755
 --- a/skills/j-mode/scripts/worktree-audit.sh
 +++ b/skills/j-mode/scripts/worktree-audit.sh
-@@ -22,9 +22,13 @@ prs=$(mktemp)
- gh pr list --author "@me" --state all --limit 1000 \
- 	--json number,state,headRefName 2>/dev/null > "$prs" || echo "[]" > "$prs"
+@@ -69,9 +69,13 @@ elif raw=$(gh pr list --author "@me" --state all --limit 1000 \
+ fi
+ [ -s "$prs" ] || echo "[]" > "$prs"
  
 -# Transcripts dir: ~/.cursor/projects/<slugified-repo-path>/agent-transcripts.
 -slug=$(printf '%s' "$main_wt" | sed 's#^/##; s#/#-#g')
@@ -294,8 +278,8 @@ index b9af081..ee69758 100755
 +main_transcripts=$(transcripts_of "$main_wt")
  now=$(date +%s)
  
- printf "SIZE\tAGE\tMERGED\tDIRTY\tREMOTE\tPR\tLAST_CHAT\tBUCKET\tWORKTREE\n"
-@@ -63,8 +67,10 @@ git worktree list --porcelain | awk '/^worktree /{print $2}' | while read -r wt;
+ echo "# base: $base"
+@@ -111,8 +115,10 @@ git worktree list --porcelain | awk '/^worktree /{print $2}' | while read -r wt;
  	# Most recent chat whose transcript operated in this worktree. Match path
  	# followed by "/" or a quote so glint-482 does not match glint-482-r37.
  	last="-"; last_ts=0
@@ -305,11 +289,11 @@ index b9af081..ee69758 100755
 +	for d in "$main_transcripts" "$(transcripts_of "$wt")"; do [ -d "$d" ] && dirs+=("$d"); done
 +	if [ ${#dirs[@]} -gt 0 ]; then
 +		f=$(rg -l -e "${wt}/" -e "${wt}\"" "${dirs[@]}" 2>/dev/null \
- 			| xargs stat -f '%m %N' 2>/dev/null | sort -rn | head -1)
+ 			| xargs stat "${stat_fmt[@]}" 2>/dev/null | sort -rn | head -1)
  		if [ -n "$f" ]; then last_ts=$(echo "$f" | awk '{print $1}')
- 			last=$(date -r "$last_ts" '+%Y-%m-%d' 2>/dev/null); fi
+ 			last=$(fmt_day "$last_ts" 2>/dev/null); fi
 diff --git a/skills/recall/SKILL.md b/skills/recall/SKILL.md
-index a70062a..03c5372 100644
+index 5f898e3..839ca8e 100644
 --- a/skills/recall/SKILL.md
 +++ b/skills/recall/SKILL.md
 @@ -12,7 +12,7 @@ Keep it tight and on-topic. Read only what the in-scope threads need, then stop.
@@ -322,15 +306,15 @@ index a70062a..03c5372 100644
  1. Classify, then route. One specific prior chat to resume is the `session-pickup` playbook, not this. Turning habits into a durable skill is `automate-me`. A human-readable summary of your work is a different task. Recall loads working context across recent chats before you act. If the user already gave you a full state capsule (paths, branch, the change), use it and skip the mining.
  2. Lock the scope before searching. Pin the window ("recent" is a real range, default the last 7 days), the topic if named, and the workspace (default the active one. Never read another project's transcripts without being asked). State the scope back. Never quietly turn "all" into "recent N".
 diff --git a/skills/reflect/SKILL.md b/skills/reflect/SKILL.md
-index 9dd0a88..82d054c 100644
+index 832eddf..872efdc 100644
 --- a/skills/reflect/SKILL.md
 +++ b/skills/reflect/SKILL.md
-@@ -16,10 +16,11 @@ Invoke when the user says "reflect" or "/reflect". Skip when the conversation is
+@@ -12,10 +12,11 @@ Invoke when the user says "reflect" or "/reflect". Skip when the conversation is
  
- ### 1. Locate the active transcript
+ ## 1. Locate the active transcript
  
--The parent finds its own transcript file before fanning out. The system prompt names the active workspace's `agent-transcripts/` directory. Use that path. Do not glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects.
-+The parent finds its own transcript file before fanning out: `~/.claude/projects/<slug>/${CLAUDE_SESSION_ID}.jsonl` in this project's Claude Code transcripts: `~/.claude/projects/<slug>/<session-id>.jsonl`, with subagents under `<slug>/<session-id>/subagents/agent-*.jsonl`. `<slug>` is the project's real path (`pwd -P`) with every character other than a letter or digit turned into `-` (`/Users/you/proj` → `-Users-you-proj`). Each line is a JSON object; chat messages are the lines whose `type` is `user` or `assistant` (read them with `jq`). Don't glob across `~/.claude/projects/*/`: that crosses project boundaries and reads private chats from unrelated projects.
+-Before fanning out, find this conversation's transcript in the `agent-transcripts/` directory the system prompt names. Do not glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects.
++Before fanning out, find this conversation's transcript, `~/.claude/projects/<slug>/${CLAUDE_SESSION_ID}.jsonl`, in this project's Claude Code transcripts: `~/.claude/projects/<slug>/<session-id>.jsonl`, with subagents under `<slug>/<session-id>/subagents/agent-*.jsonl`. `<slug>` is the project's real path (`pwd -P`) with every character other than a letter or digit turned into `-` (`/Users/you/proj` → `-Users-you-proj`). Each line is a JSON object; chat messages are the lines whose `type` is `user` or `assistant` (read them with `jq`). Don't glob across `~/.claude/projects/*/`: that crosses project boundaries and reads private chats from unrelated projects.
  
  ```bash
 -ls -t <agent-transcripts>/*.jsonl <agent-transcripts>/*/*.jsonl <agent-transcripts>/*/subagents/*.jsonl 2>/dev/null | head -10
@@ -338,48 +322,48 @@ index 9dd0a88..82d054c 100644
 +ls -t ~/.claude/projects/$slug/*.jsonl ~/.claude/projects/$slug/*/subagents/*.jsonl 2>/dev/null | head -10
  ```
  
- Three transcript layouts: legacy flat (`<id>.jsonl`), current nested (`<id>/<id>.jsonl`), and subagent (`<parent>/subagents/<child>.jsonl`).
+ That covers the legacy flat (`<id>.jsonl`), current nested (`<id>/<id>.jsonl`), and subagent (`<parent>/subagents/<child>.jsonl`) layouts. For each candidate, read the first JSONL line. Take the file whose `message.content[0].text` contains the conversation's opening user prompt. If none matches, pass a tight digest of the session instead.
 diff --git a/skills/reflect/references/divergent-reviewer.md b/skills/reflect/references/divergent-reviewer.md
-index f51a01c..4ed8a81 100644
+index 1ff6be7..84fc223 100644
 --- a/skills/reflect/references/divergent-reviewer.md
 +++ b/skills/reflect/references/divergent-reviewer.md
-@@ -20,7 +20,7 @@ Scan for:
+@@ -18,7 +18,7 @@ Scan for:
  
- Findings must point to skills, tools, or MCPs invoked in this transcript. Speculative routings to skills the parent never opened do not count. To check whether a skill was used, scan the transcript for:
+ ## Scope to skills and tools the session actually used
  
--- `Read` tool calls against any `SKILL.md` file (workspace `.claude/skills/`, user-level `~/.claude/skills/`, or plugin-installed paths under `~/.cursor/plugins/`)
-+- `Read` tool calls against any `SKILL.md` file (workspace `.claude/skills/`, user-level `~/.claude/skills/`, or plugin-installed paths under `~/.claude/plugins/cache/`)
- - `Task` prompts that name a skill path
- - Tool calls (Shell, Grep, MCP, etc.) that match a skill's documented commands
+-Route findings only to skills, tools, or MCPs this transcript used. A skill counts as used when the transcript shows a `Read` of its `SKILL.md` (under `.claude/skills/`, `~/.claude/skills/`, or `~/.cursor/plugins/`), a `Task` prompt naming its path, or a tool call (Shell, Grep, MCP, etc.) matching its documented commands. Speculative routings to skills the parent never opened do not count.
++Route findings only to skills, tools, or MCPs this transcript used. A skill counts as used when the transcript shows a `Read` of its `SKILL.md` (under `.claude/skills/`, `~/.claude/skills/`, or `~/.claude/plugins/cache/`), a `Task` prompt naming its path, or a tool call (Shell, Grep, MCP, etc.) matching its documented commands. Speculative routings to skills the parent never opened do not count.
  
+ Two finding shapes are valid:
+ - The parent invoked the skill and you found a real gap in its body. Route to the skill's relevant section.
 diff --git a/skills/reflect/references/judgment-reviewer.md b/skills/reflect/references/judgment-reviewer.md
-index 5a842c6..3dab842 100644
+index 5804c9f..95051d9 100644
 --- a/skills/reflect/references/judgment-reviewer.md
 +++ b/skills/reflect/references/judgment-reviewer.md
-@@ -19,7 +19,7 @@ Scan for:
+@@ -17,7 +17,7 @@ Scan for:
  
- Findings must point to skills, tools, or MCPs invoked in this transcript. Speculative routings to skills the parent never opened do not count. To check whether a skill was used, scan the transcript for:
+ ## Scope to skills and tools the session actually used
  
--- `Read` tool calls against any `SKILL.md` file (workspace `.claude/skills/`, user-level `~/.claude/skills/`, or plugin-installed paths under `~/.cursor/plugins/`)
-+- `Read` tool calls against any `SKILL.md` file (workspace `.claude/skills/`, user-level `~/.claude/skills/`, or plugin-installed paths under `~/.claude/plugins/cache/`)
- - `Task` prompts that name a skill path
- - Tool calls (Shell, Grep, MCP, etc.) that match a skill's documented commands
+-Route findings only to skills, tools, or MCPs this transcript used. A skill counts as used when the transcript shows a `Read` of its `SKILL.md` (under `.claude/skills/`, `~/.claude/skills/`, or `~/.cursor/plugins/`), a `Task` prompt naming its path, or a tool call (Shell, Grep, MCP, etc.) matching its documented commands. Speculative routings to skills the parent never opened do not count.
++Route findings only to skills, tools, or MCPs this transcript used. A skill counts as used when the transcript shows a `Read` of its `SKILL.md` (under `.claude/skills/`, `~/.claude/skills/`, or `~/.claude/plugins/cache/`), a `Task` prompt naming its path, or a tool call (Shell, Grep, MCP, etc.) matching its documented commands. Speculative routings to skills the parent never opened do not count.
  
+ Two finding shapes are valid:
+ - The parent invoked the skill and you found a real gap in its body. Route to the skill's relevant section.
 diff --git a/skills/reflect/references/tooling-reviewer.md b/skills/reflect/references/tooling-reviewer.md
-index bed8244..3d0bc4b 100644
+index 8f40f83..9fc3837 100644
 --- a/skills/reflect/references/tooling-reviewer.md
 +++ b/skills/reflect/references/tooling-reviewer.md
-@@ -32,7 +32,7 @@ Scan for:
+@@ -28,7 +28,7 @@ Scan for:
  
- Findings must point to skills, tools, or MCPs invoked in this transcript. Speculative routings to skills the parent never opened do not count. To check whether a skill was used, scan the transcript for:
+ ## Scope to skills and tools the session actually used
  
--- `Read` tool calls against any `SKILL.md` file (workspace `.claude/skills/`, user-level `~/.claude/skills/`, or plugin-installed paths under `~/.cursor/plugins/`)
-+- `Read` tool calls against any `SKILL.md` file (workspace `.claude/skills/`, user-level `~/.claude/skills/`, or plugin-installed paths under `~/.claude/plugins/cache/`)
- - `Task` prompts that name a skill path
- - Tool calls (Shell, Grep, MCP, etc.) that match a skill's documented commands
+-Route findings only to skills, tools, or MCPs this transcript used. A skill counts as used when the transcript shows a `Read` of its `SKILL.md` (under `.claude/skills/`, `~/.claude/skills/`, or `~/.cursor/plugins/`), a `Task` prompt naming its path, or a tool call (Shell, Grep, MCP, etc.) matching its documented commands. Speculative routings to skills the parent never opened do not count.
++Route findings only to skills, tools, or MCPs this transcript used. A skill counts as used when the transcript shows a `Read` of its `SKILL.md` (under `.claude/skills/`, `~/.claude/skills/`, or `~/.claude/plugins/cache/`), a `Task` prompt naming its path, or a tool call (Shell, Grep, MCP, etc.) matching its documented commands. Speculative routings to skills the parent never opened do not count.
  
+ Two finding shapes are valid:
+ - The parent invoked the skill and you found a real gap in its body. Route to the skill's relevant section.
 diff --git a/skills/show-me-your-work/SKILL.md b/skills/show-me-your-work/SKILL.md
-index 3f87f72..1cec35a 100644
+index 7c013a4..ea67424 100644
 --- a/skills/show-me-your-work/SKILL.md
 +++ b/skills/show-me-your-work/SKILL.md
 @@ -54,7 +54,7 @@ Commit it only when the work is ambitious enough that a reviewer needs the trail
@@ -392,31 +376,21 @@ index 3f87f72..1cec35a 100644
  - Check that every row maps to a real decision or action.
  - Check that each row's evidence resolves and shows what the row claims.
 diff --git a/skills/swarm/SKILL.md b/skills/swarm/SKILL.md
-index cbc5ae8..08f54e6 100644
+index d81f1a5..337e25e 100644
 --- a/skills/swarm/SKILL.md
 +++ b/skills/swarm/SKILL.md
-@@ -6,7 +6,7 @@ disable-model-invocation: true
- 
- # Swarm
- 
--Fan out N parallel cloud workers. They may cover separate slices, race the same brief, or mix both. The parent waits, aggregates, and returns one report.
-+Fan out N parallel background workers. They may cover separate slices, race the same brief, or mix both. The parent waits, aggregates, and returns one report.
- 
- ## Start
- 
-@@ -21,15 +21,15 @@ Open a todolist with one entry per phase before launching anything.
+@@ -19,14 +19,14 @@ Open a todolist with one entry per phase before launching anything.
  
  1. State the done predicate and the artifact or report the swarm must return.
  2. Choose the shape. Partition into slices, race N workers on identical briefs, or mix both. For a race or mixed shape, declare `first pass`, `rank all`, or `best-of` before spawning.
--3. Set N from the user or derive it from the shape. N is total workers, not the cloud concurrency limit.
-+3. Set N from the user or derive it from the shape. N is total workers, not a concurrency limit.
- 4. Pick the worker model from the `swarm workers` line in `~/.claude/rules/jstack-models.md`. If the rule or that line is missing, use `grok-4.7-xhigh-fast`. For `auto` or `inherit-parent`, omit `model` so the workers run on the parent model. If the Agent tool rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message. For a model race, name each arm's model up front.
- 5. Give each worker its own writable output when it writes. When workers verify or measure commits, each brief names the exact SHAs. A measurement brief also names the method (sample count, what one sample is, order). The worker records both in its result.
+-3. Pick the worker model from the `swarm workers` line in `~/.claude/rules/jstack-models.md`. If the rule or that line is missing, use `grok-4.7-xhigh-fast`. For `auto` or `inherit-parent`, omit `model` so the workers run on the parent model. If the Agent tool rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message. For a model race, name each arm's model up front. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **j-mode** skill.
++3. Pick the worker model from the `swarm workers` line in `~/.claude/rules/jstack-models.md`. If the rule or that line is missing, use `grok-4.7-xhigh-fast`. For `auto` or `inherit-parent`, omit `model` so the workers run on the parent model. If the Agent tool rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message. For a model race, name each arm's model up front. Pick each subagent's reasoning level (`effort`) for the job, per the Subagents section of the **j-mode** skill.
+ 4. Give each worker its own writable output when it writes. When workers verify or measure commits, each brief names the exact SHAs. A measurement brief also names the method (sample count, what one sample is, order). The worker records both in its result.
  
  ## Phase B: Fan out
  
--Spawn all N workers in one message with `subagent_type: general-purpose`, `environment: "cloud"`, `run_in_background: true`, and the step 4 model, left unset for `auto` or `inherit-parent`. Use `environment: "local"` only when the worker needs access to something on the user's computer.
-+Spawn all N workers in one message with `subagent_type: general-purpose`, `isolation: "worktree"`, `run_in_background: true`, and the step 4 model, left unset for `inherit`. Drop `isolation` only for a read-only worker that edits nothing.
+-Spawn all N workers in one message with `subagent_type: general-purpose`, `environment: "cloud"`, `run_in_background: true`, and the step 3 model, left unset for `auto` or `inherit-parent`. Use `environment: "local"` only when the worker needs access to something on the user's computer.
++Spawn all N workers in one message with `subagent_type: general-purpose`, `isolation: "worktree"`, `run_in_background: true`, and the step 3 model, left unset for `inherit`. Drop `isolation` only for a read-only worker that edits nothing.
  
 -When a worker must start from a non-default pushed branch, pass `cloud_base_branch`.
 +When a worker must start from another branch, tell it to check that branch out in its worktree first.
