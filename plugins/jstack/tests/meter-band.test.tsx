@@ -10,13 +10,14 @@ const USAGE: SessionUsage = {
   rateLimits: [{ kind: 'five_hour', percentUsed: 12, resetsAt: '2026-10-22T15:40:00Z' }, { kind: 'seven_day', percentUsed: 60 }],
   cost: { usd: 0.42 },
 }
-type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean }
+type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean; board?: boolean }
 function world(on: On, w: World = {}) {
   const ran: unknown[] = []
   const toasts: string[] = []
   const spawned = [...(w.spawned ?? [])]
   const files: Record<string, string> = { '/home/u/.claude/.ponytail-active': 'full\n' }
   if (w.hasPackage !== false) files['/home/u/package.json'] = w.scripts ?? '{"scripts":{"check":"x"}}'
+  if (w.board) files['/home/u/.config/ponytail/band/board.html'] = '<html>'
   mock.env(on, { HOME: '/home/u' })
   const saved = new Map<string, unknown>(w.details ? [['details', true]] : [])
   on('store.get', ($, e) => ({ value: saved.get(e.key) }))
@@ -31,6 +32,7 @@ function world(on: On, w: World = {}) {
   on('command.run', ($, e) => { ran.push({ command: e.command, args: e.args }); return { text: '' } })
   on('session.usage', () => ({ value: w.usage ?? USAGE }))
   on('fs.read', ($, e) => (e.path in files ? { value: files[e.path]! } : ({ deny: 'missing' } as never)))
+  on('fs.exists', ($, e) => ({ value: e.path in files }))
   on('agent.spawn', () => ({ ...(spawned.shift() ?? { model: 'opus' }) }))
   on('turn.complete', () => ({ text: '' }))
   on('ui.toast', ($, e) => { toasts.push(e.text); return { value: undefined } })
@@ -146,7 +148,7 @@ test('Check toasts the tail of a failure and a pass', async ($, on) => {
   expect(toasts).toEqual(['pnpm check failed: boom', 'pnpm check passed'])
 })
 test("Board opens Ponytail's board page and toasts a failed open", async ($, on) => {
-  const { toasts } = world(on)
+  const { toasts } = world(on, { board: true })
   const opened: unknown[] = []
   const results = [PASS, { ...PASS, exitCode: 1, stderr: 'no such file\n' }]
   on('process.run', ($, e) => { opened.push(e.argv); return { value: results.shift()! } })
@@ -157,6 +159,16 @@ test("Board opens Ponytail's board page and toasts a failed open", async ($, on)
   const board = '/home/u/.config/ponytail/band/board.html'
   expect(opened).toEqual([['open', board], ['open', board]])
   expect(toasts).toEqual(['could not open the board: no such file'])
+})
+test('Board without a board page toasts instead of opening', async ($, on) => {
+  const { toasts } = world(on)
+  const opened: unknown[] = []
+  on('process.run', ($, e) => { opened.push(e.argv); return { value: PASS } })
+  await start($)
+  const ui = await mount($)
+  await ui.select({ key: 'actions', value: 'board' })
+  expect(opened).toEqual([])
+  expect(toasts).toEqual(['Ponytail has not built the board yet; it writes it after the first turn'])
 })
 test('a command missing from command.list leaves its action out', async ($, on) => {
   world(on, { commands: ['code-review'] })

@@ -86,6 +86,10 @@ async function check($: EngineInterface): Promise<void> {
 
 async function openBoard($: EngineInterface, file: string): Promise<void> {
   try {
+    if (!(await $.fs.exists(file))) {
+      $.ui.toast('Ponytail has not built the board yet; it writes it after the first turn')
+      return
+    }
     // shortcut: macOS `open` only; add xdg-open and `cmd /c start` when the band runs elsewhere
     const r = await $.process.run(['open', file])
     if (r.exitCode !== 0) $.ui.toast(`could not open the board: ${r.stderr.trim().slice(-200) || file}`)

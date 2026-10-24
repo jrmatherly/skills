@@ -1,9 +1,9 @@
 diff --git a/hooks/meter.tsx b/hooks/meter.tsx
 new file mode 100644
-index 0000000..2d77810
+index 0000000..968538b
 --- /dev/null
 +++ b/hooks/meter.tsx
-@@ -0,0 +1,226 @@
+@@ -0,0 +1,230 @@
 +import { atom, read, update } from 'claude-code'
 +import type { EngineInterface, On } from 'claude-code'
 +
@@ -92,6 +92,10 @@ index 0000000..2d77810
 +
 +async function openBoard($: EngineInterface, file: string): Promise<void> {
 +  try {
++    if (!(await $.fs.exists(file))) {
++      $.ui.toast('Ponytail has not built the board yet; it writes it after the first turn')
++      return
++    }
 +    // shortcut: macOS `open` only; add xdg-open and `cmd /c start` when the band runs elsewhere
 +    const r = await $.process.run(['open', file])
 +    if (r.exitCode !== 0) $.ui.toast(`could not open the board: ${r.stderr.trim().slice(-200) || file}`)
@@ -280,10 +284,10 @@ index c0c3540..cfcbda9 100644
  
 diff --git a/tests/meter-band.test.tsx b/tests/meter-band.test.tsx
 new file mode 100644
-index 0000000..b9312bb
+index 0000000..63dd94f
 --- /dev/null
 +++ b/tests/meter-band.test.tsx
-@@ -0,0 +1,286 @@
+@@ -0,0 +1,298 @@
 +import { expect, mock, test } from 'claude-code/testing'
 +import type { Engine } from 'claude-code/testing'
 +import type { On, RenderPropsOf, SessionUsage } from 'claude-code'
@@ -296,13 +300,14 @@ index 0000000..b9312bb
 +  rateLimits: [{ kind: 'five_hour', percentUsed: 12, resetsAt: '2026-10-22T15:40:00Z' }, { kind: 'seven_day', percentUsed: 60 }],
 +  cost: { usd: 0.42 },
 +}
-+type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean }
++type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean; board?: boolean }
 +function world(on: On, w: World = {}) {
 +  const ran: unknown[] = []
 +  const toasts: string[] = []
 +  const spawned = [...(w.spawned ?? [])]
 +  const files: Record<string, string> = { '/home/u/.claude/.ponytail-active': 'full\n' }
 +  if (w.hasPackage !== false) files['/home/u/package.json'] = w.scripts ?? '{"scripts":{"check":"x"}}'
++  if (w.board) files['/home/u/.config/ponytail/band/board.html'] = '<html>'
 +  mock.env(on, { HOME: '/home/u' })
 +  const saved = new Map<string, unknown>(w.details ? [['details', true]] : [])
 +  on('store.get', ($, e) => ({ value: saved.get(e.key) }))
@@ -317,6 +322,7 @@ index 0000000..b9312bb
 +  on('command.run', ($, e) => { ran.push({ command: e.command, args: e.args }); return { text: '' } })
 +  on('session.usage', () => ({ value: w.usage ?? USAGE }))
 +  on('fs.read', ($, e) => (e.path in files ? { value: files[e.path]! } : ({ deny: 'missing' } as never)))
++  on('fs.exists', ($, e) => ({ value: e.path in files }))
 +  on('agent.spawn', () => ({ ...(spawned.shift() ?? { model: 'opus' }) }))
 +  on('turn.complete', () => ({ text: '' }))
 +  on('ui.toast', ($, e) => { toasts.push(e.text); return { value: undefined } })
@@ -432,7 +438,7 @@ index 0000000..b9312bb
 +  expect(toasts).toEqual(['pnpm check failed: boom', 'pnpm check passed'])
 +})
 +test("Board opens Ponytail's board page and toasts a failed open", async ($, on) => {
-+  const { toasts } = world(on)
++  const { toasts } = world(on, { board: true })
 +  const opened: unknown[] = []
 +  const results = [PASS, { ...PASS, exitCode: 1, stderr: 'no such file\n' }]
 +  on('process.run', ($, e) => { opened.push(e.argv); return { value: results.shift()! } })
@@ -443,6 +449,16 @@ index 0000000..b9312bb
 +  const board = '/home/u/.config/ponytail/band/board.html'
 +  expect(opened).toEqual([['open', board], ['open', board]])
 +  expect(toasts).toEqual(['could not open the board: no such file'])
++})
++test('Board without a board page toasts instead of opening', async ($, on) => {
++  const { toasts } = world(on)
++  const opened: unknown[] = []
++  on('process.run', ($, e) => { opened.push(e.argv); return { value: PASS } })
++  await start($)
++  const ui = await mount($)
++  await ui.select({ key: 'actions', value: 'board' })
++  expect(opened).toEqual([])
++  expect(toasts).toEqual(['Ponytail has not built the board yet; it writes it after the first turn'])
 +})
 +test('a command missing from command.list leaves its action out', async ($, on) => {
 +  world(on, { commands: ['code-review'] })
