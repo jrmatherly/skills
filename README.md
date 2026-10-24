@@ -108,6 +108,15 @@ skills are plain Markdown, so another agent can take one by name
 (`-s tailor`). Keep skills current with `npx skills update`, and check what's
 installed with `npx skills ls -g`.
 
+## Checks
+
+`.github/workflows/check.yml` runs on every pull request and push to `main`:
+shellcheck over the scripts, hooks and tests, `scripts/check-resume`,
+`scripts/check-jstack --no-types` (validate and `claude plugin test`, no
+login needed) and the j-mode scripts' Bun tests, plus a gitleaks job over
+the whole history. The type-check and the full `scripts/sync-jstack` stay
+local, since they need the declarations `/plugin-authoring` writes.
+
 ## Add a skill
 
 1. Create `skills/<name>/SKILL.md` (or run `npx skills init skills/<name>`).
