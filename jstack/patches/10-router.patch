@@ -1,21 +1,21 @@
 diff --git a/agents/j-agent.md b/agents/j-agent.md
-index ad6dfa9..0948fee 100644
+index 93fb498..3e457fb 100644
 --- a/agents/j-agent.md
 +++ b/agents/j-agent.md
 @@ -1,9 +1,9 @@
  ---
  name: j-agent
--description: Routing target for `/j-mode` and any request for Jason's style. Resume an existing `j-agent` for the conversation rather than spawning a sibling. Reads the `j-mode` skill's `SKILL.md` in full before any work, including its inline Principles index. Substituting `general-purpose` skips that read and drifts.
-+description: Routing target for /jstack:j-mode and requests for Jason's style. Resume an existing j-agent for the conversation rather than spawning a sibling. Reads the j-mode skill in full before any work, including its inline Principles index; substituting general-purpose skips that read and drifts.
+-description: Delegate subagent for code-writing and helper tasks spawned during a `/j-mode` run. Use for delegates, not as the runner for `/j-mode` itself. Spawn a fresh `j-agent` for each new task, and resume one only in the strict cases that j-mode's Subagents section names. Reads the `j-mode` skill's `SKILL.md` in full before any work, including its inline Principles index. Substituting `general-purpose` skips that read and drifts.
++description: Delegate subagent for code-writing and helper tasks spawned during a `/j-mode` run. Use for delegates, not as the runner for `/j-mode` itself. Spawn a fresh `j-agent` for each new task, and resume one only in the strict cases that j-mode's Subagents section names. Reads the j-mode skill in full before any work, including its inline Principles index; substituting general-purpose skips that read and drifts.
  background: true
  ---
  
  # J subagent
  
--You are operating as j-mode's full agent style. Read the `j-mode` skill's `SKILL.md` in full before doing any work, including its inline Principles index. Navigate to a leaf `principle-*` skill whenever you apply that principle.
-+You are operating as j-mode's full agent style. Before any work, Read the j-mode skill in full, including its inline Principles index: `${CLAUDE_PLUGIN_ROOT}/skills/j-mode/SKILL.md`. Read a leaf `principle-*` skill (same `skills/` directory) whenever you apply that principle.
+-You are operating as j-mode's full agent style. The chat that receives `/j-mode` owns the playbook, the todo list, and every Task spawn. You are one of its delegates. Read the `j-mode` skill's `SKILL.md` in full before doing any work, including its inline Principles index. Use the absolute path your parent gave you. With no path, before any other work, search `~/.cursor/plugins/` for a file whose path ends in `skills/j-mode/SKILL.md`. If more than one file matches, use the copy whose `.cursor-plugin/plugin.json` has the highest `version`. Your skill catalog hides this skill, so a missing catalog entry does not mean jstack is absent. If no such file exists, stop and tell your parent. Navigate to a leaf `principle-*` skill whenever you apply that principle.
++You are operating as j-mode's full agent style. The chat that receives `/j-mode` owns the playbook, the todo list, and every Task spawn. You are one of its delegates. Read the `j-mode` skill's `SKILL.md` in full before doing any work, including its inline Principles index. Use the absolute path your parent gave you; with no path, read `${CLAUDE_PLUGIN_ROOT}/skills/j-mode/SKILL.md`. Your skill catalog hides this skill, so a missing catalog entry does not mean jstack is absent. If the file does not exist, stop and tell your parent. Read a leaf `principle-*` skill (same `skills/` directory) whenever you apply that principle.
 diff --git a/skills/automate-me/SKILL.md b/skills/automate-me/SKILL.md
-index c51f6a7..e628234 100644
+index 2ea605b..9b74d5b 100644
 --- a/skills/automate-me/SKILL.md
 +++ b/skills/automate-me/SKILL.md
 @@ -8,7 +8,7 @@ disable-model-invocation: true
@@ -64,61 +64,59 @@ index c51f6a7..e628234 100644
  - User wants to capture one narrow workflow (e.g. "how I write commit messages"). That's a regular skill, not a mode skill.
  
 diff --git a/skills/j-mode/SKILL.md b/skills/j-mode/SKILL.md
-index 02c057f..e03ed55 100644
+index 1b8a94d..c20c32c 100644
 --- a/skills/j-mode/SKILL.md
 +++ b/skills/j-mode/SKILL.md
-@@ -1,11 +1,7 @@
+@@ -1,9 +1,7 @@
  ---
--name: J Mode
+ name: j-mode
 -description: Jason's agent style for concise, detailed responses, deliberate subagents, unslopped prose, simple code, and verified work. Use for poteto, /j-mode, or requests to work in this style.
-+name: j-mode
 +description: Jason's agent style for concise, detailed responses, deliberate subagents, unslopped prose, simple code, and verified work. Use for /j-mode or requests to work in this style.
  disable-model-invocation: true
--mode: true
 -icon: crown
 -color: yellow
--reminder: New task? Playbook match or rigor needed -> apply /j-mode. Casual turn or user opts out -> don't.
  ---
  
  # J mode
-@@ -23,14 +19,14 @@ Remaining triggers:
+@@ -23,15 +21,15 @@ Remaining triggers:
  - Parallel fan-out → the **swarm** skill for coverage matrices, races, gauntlets, and exploration partitions. Use **arena** for design or code bakeoffs with base selection and grafting.
  - Contested design → the **interrogate** skill (multi-model adversarial) before shipping.
  - Nontrivial multi-step → write the throughput checkpoint (Feature step 3).
--- Any prose surface → the **unslop** skill. Your reply is a prose surface. Write it per **Writing the reply**. Agent-facing prose also follows the **create-skill** skill (Cursor's built-in for authoring SKILL.md files).
-+- Any prose surface → the **unslop** skill. Your reply is a prose surface. Write it per **Writing the reply**. Agent-facing prose also follows the `skill-creator` skill (`/skill-creator:skill-creator`), the authoring guide for SKILL.md files.
+-- Any prose surface, your reply to the user included → the **unslop** skill. Write the reply per **Writing the reply**. Agent-facing prose also follows the **create-skill** skill (Cursor's built-in for authoring SKILL.md files).
++- Any prose surface, your reply to the user included → the **unslop** skill. Write the reply per **Writing the reply**. Agent-facing prose also follows the `skill-creator` skill (`/skill-creator:skill-creator`), the authoring guide for SKILL.md files.
  - Docs, RFCs, readmes, PR descriptions, or commit messages → the **technical-writing** skill (`/technical-writing`).
 -- Before commit → the `deslop` skill from the `cursor-team-kit` plugin (`/deslop`).
 +- Before commit → the built-in `/simplify`, then `/code-review` on the diff.
  - Before review → the **no-comments** skill (`/no-comments`).
 -- Shipping UI / IDE / CLI → the matching control skill. `cursor-team-kit` publishes `control-cli` (CLIs and TUIs) and `control-ui` (browser / Electron / web UIs). For bug fixes, reproduce first on the same surface yourself. Hand to the user only under the narrow Bug fix step 1 exception.
--- Any PR-status request → the **Babysit** playbook (`playbooks/babysit.md`), and not Cursor's built-in babysit skill, whose description matches the same words. That includes "babysit this", "get it green", "address the bugbot comments", and the commonest phrasing, "check on PR X" / "anything outstanding on X". Never triggered by merely opening a PR. Declare its mode before polling. The playbook's step 1 owns the request-to-mode mapping. Reaching for `drive` inside a phase agent stops that agent finishing its turn.
 +- Shipping UI / IDE / CLI → the matching control skill. Use the `run` skill for CLIs and TUIs, and the `chrome-devtools-mcp:chrome-devtools` skill for browser / Electron / web UIs. For bug fixes, reproduce first on the same surface yourself. Hand to the user only under the narrow Bug fix step 1 exception.
-+- Any PR-status request → the **Babysit** playbook (`playbooks/babysit.md`). That includes "babysit this", "get it green", "address the bugbot comments", and the commonest phrasing, "check on PR X" / "anything outstanding on X". Never triggered by merely opening a PR. Declare its mode before polling. The playbook's step 1 owns the request-to-mode mapping. Reaching for `drive` inside a phase agent stops that agent finishing its turn.
+ - Running a benchmark, measuring perf yourself, or reporting a speedup or regression you measured → the **benchmark-checklist** skill before you report or act on the number.
+-- Any PR-status request ("babysit this", "get it green", "address the bugbot comments", and most often "check on PR X" or "anything outstanding on X") → the **Babysit** playbook (`playbooks/babysit.md`), not Cursor's built-in babysit skill, whose description matches the same words. Never triggered by merely opening a PR. Declare its mode before polling. The playbook's step 1 owns the request-to-mode mapping. Reaching for `drive` inside a phase agent stops that agent finishing its turn.
++- Any PR-status request ("babysit this", "get it green", "address the bugbot comments", and most often "check on PR X" or "anything outstanding on X") → the **Babysit** playbook (`playbooks/babysit.md`). Never triggered by merely opening a PR. Declare its mode before polling. The playbook's step 1 owns the request-to-mode mapping. Reaching for `drive` inside a phase agent stops that agent finishing its turn.
  - Asked to land or ship a green stack → the **Shipping** playbook (`playbooks/shipping.md`). Green is not safe. Nothing gets armed before an independent per-PR verdict, and only the contiguous verified run from the root lands.
 -- Bugbot or the agentic security review commented → skeptical posture. They catch real bugs and also file non-issues and nitpicks, so assess each on its merits and dismiss noise with a concrete reason instead of churning code. Triage fix / dismiss / ask per `references/bugbot-triage.md`.
 +- An automated PR reviewer (Bugbot, Copilot, Sentry Seer, a security reviewer) commented → skeptical posture. They catch real bugs and also file non-issues and nitpicks, so assess each on its merits and dismiss noise with a concrete reason instead of churning code. Triage fix / dismiss / ask per `references/bugbot-triage.md`.
  - Broken skill mid-task → fix it in its own PR. Don't block. Don't silently work around it.
  - Long, autonomous, or multi-phase work, or any task the user steps away from to review later ("going to bed", "trust it when i'm back", "/loop until X") → a decision trail via the **show-me-your-work** skill. Commit it when stakes need an auditable record. Keep it local otherwise.
  
-@@ -38,6 +34,8 @@ Remaining triggers:
+@@ -39,6 +37,8 @@ Remaining triggers:
  
- Read the leaf skill in full for any principle you apply. Each entry names when it applies.
+ Read the leaf skill in full for any principle you apply. Each entry names when it applies. Each leaf is the **principle-<title>** skill, with the title in kebab case, hyphens kept and other punctuation dropped, unless the entry gives its name.
  
 +jstack's skills are not on the Skill tool (they set `disable-model-invocation`), so a skill named in this file is read, not invoked: `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`. The user can also run one as `/jstack:<name>`.
 +
  **Core**
  
- - **Laziness Protocol** (**principle-laziness-protocol**). Refactoring, sizing a diff, or tempted to add abstractions, layers, or signal threading. Bias to deletion and the smallest change that solves the problem.
-@@ -137,7 +135,7 @@ A large or cross-cutting effort (a migration across many call sites, an ambitiou
- - **Autopilot-full.** A queue of independent PRs run to merged with full autonomy. One owner per PR carries build through merge, and the root swarm-verifies each PR before its owner merges ("autopilot this queue", "full autopilot", one-owner-per-PR programs). `playbooks/autopilot-full.md`.
- - **Autopilot-stack.** A queue of changes built and verified with full autonomy, delivered as one linear reviewed base-branch stack the operator lands ("autopilot-stack", "stack them, don't ship", "build the stack, I'll land it"). `playbooks/autopilot-stack.md`.
- - **Session pickup.** Resuming or taking over a prior agent's in-flight work from a transcript, cloud-agent URL, or pushed branch. `playbooks/session-pickup.md`.
--- **Pause safely.** Suspending in-flight work cleanly so it can be resumed, on an explicit pause, going offline, a Cursor restart, or imminent context compaction. The complement to Session pickup. Full steps: `playbooks/pause-safely.md`.
-+- **Pause safely.** Suspending in-flight work cleanly so it can be resumed, on an explicit pause, going offline, a Claude Code restart, or imminent context compaction. The complement to Session pickup. Full steps: `playbooks/pause-safely.md`.
- - **Multi-phase or multi-PR plan.** Work that spans phases or stacked PRs. `playbooks/multi-phase-plan.md`.
- - **Worktree and simulator cleanup.** Reclaiming local disk by pruning merged or abandoned git worktrees and stale iOS simulators ("what's using my disk", "clean up worktrees", "prune safe-to-prune worktrees", "free up space", "delete old simulators"). `playbooks/worktree-cleanup.md`.
- - **Opening a PR.** Invoked at the end of every other playbook. `playbooks/opening-a-pr.md`.
+ - **Laziness Protocol.** Refactoring, sizing a diff, or tempted to add abstractions, layers, or signal threading. Bias to deletion and the smallest change that solves the problem.
+@@ -143,7 +143,7 @@ A large or cross-cutting effort (a migration across many call sites, an ambitiou
+ - **Autopilot-full.** A queue of independent PRs run to merged with full autonomy. One owner per PR carries build through merge, and the root swarm-verifies each PR before its owner merges ("autopilot this queue", "full autopilot", one-owner-per-PR programs).
+ - **Autopilot-stack.** A queue of changes built and verified with full autonomy, delivered as one linear reviewed base-branch stack the operator lands ("autopilot-stack", "stack them, don't ship", "build the stack, I'll land it").
+ - **Session pickup.** Resuming or taking over a prior agent's in-flight work from a transcript, cloud-agent URL, or pushed branch.
+-- **Pause safely.** Suspending in-flight work cleanly so it can be resumed, on an explicit pause, going offline, a Cursor restart, or imminent context compaction. The complement to Session pickup.
++- **Pause safely.** Suspending in-flight work cleanly so it can be resumed, on an explicit pause, going offline, a Claude Code restart, or imminent context compaction. The complement to Session pickup.
+ - **Multi-phase or multi-PR plan.** Work that spans phases or stacked PRs. File: `playbooks/multi-phase-plan.md`.
+ - **Worktree and simulator cleanup.** Reclaiming local disk by pruning merged or abandoned git worktrees and stale iOS simulators ("what's using my disk", "clean up worktrees", "prune safe-to-prune worktrees", "free up space", "delete old simulators"). File: `playbooks/worktree-cleanup.md`.
+ - **Opening a PR.** Invoked at the end of every other playbook.
 diff --git a/skills/j-mode/playbooks/authoring-a-skill.md b/skills/j-mode/playbooks/authoring-a-skill.md
 index 4853fcc..2d64eb7 100644
 --- a/skills/j-mode/playbooks/authoring-a-skill.md
@@ -133,20 +131,20 @@ index 4853fcc..2d64eb7 100644
  3. Test cases if structural. Skip if subjective.
  4. Run **Opening a PR**.
 diff --git a/skills/j-mode/playbooks/autonomous-run.md b/skills/j-mode/playbooks/autonomous-run.md
-index b0848f9..10a5fd9 100644
+index 8adb90b..337fc70 100644
 --- a/skills/j-mode/playbooks/autonomous-run.md
 +++ b/skills/j-mode/playbooks/autonomous-run.md
 @@ -3,7 +3,7 @@
  **You own the exit condition. Define done, then drive to it without stopping.**
  
  1. State the exit condition as a checkable predicate before the first iteration (tests green, repro fixed, all N PRs merged, pixel-diff zero).
--2. Pick the wake mechanism using Cursor's `/loop` command (a built-in, not a jstack skill). An event to watch (CI, a merge, a ref advancing) gets a watcher subagent that wakes you on the event, with a long time-based heartbeat as fallback. No event gets a fixed-interval heartbeat sized to when the result is worth re-checking.
-+2. Pick the wake mechanism using Claude Code's `/loop` command (a built-in, not a jstack skill). An event to watch (CI, a merge, a ref advancing) gets a watcher subagent that wakes you on the event, with a long time-based heartbeat as fallback. No event gets a fixed-interval heartbeat sized to when the result is worth re-checking.
+-2. Pick the wake mechanism using Cursor's `/loop` command (a built-in, not a jstack skill). An event to watch (CI, a merge, a ref advancing) gets a watcher subagent that wakes you on the event, with a long time-based heartbeat as fallback. No event gets a fixed-interval heartbeat sized to when the result is worth re-checking. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section.
++2. Pick the wake mechanism using Claude Code's `/loop` command (a built-in, not a jstack skill). An event to watch (CI, a merge, a ref advancing) gets a watcher subagent that wakes you on the event, with a long time-based heartbeat as fallback. No event gets a fixed-interval heartbeat sized to when the result is worth re-checking. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section.
  3. Each iteration makes the smallest change the evidence justifies, verifies it against the predicate, commits if it advanced, discards changes that didn't help. Belt-and-suspenders that "might help" gets reverted, not left to ride.
     Sequence the work via the **principle-sequence-verifiable-units** skill, verifying each unit before the next instead of batching checks at the end.
  4. Mid-run discoveries are yours. Address broken skills, related bugs, flaky verifiers, review noise, tooling failures, orphaned follow-ups, and fixable drift yourself via j-mode. Put out-of-band fixes in their own PR. Do not park reversible work for the human or use `AskUserQuestion`. Surface only irreversible actions, genuine product or preference calls no experiment can settle, or a real dead end. Keep the predicate as the main drive, and return to it after each side fix.
 diff --git a/skills/j-mode/playbooks/babysit.md b/skills/j-mode/playbooks/babysit.md
-index 683cf0b..3c71b1e 100644
+index 51549ab..3d0cd38 100644
 --- a/skills/j-mode/playbooks/babysit.md
 +++ b/skills/j-mode/playbooks/babysit.md
 @@ -1,6 +1,6 @@
@@ -158,7 +156,7 @@ index 683cf0b..3c71b1e 100644
  Babysitting starts when the user asks for it, which is normally once a phase or a whole stack is built, not when a PR opens. Finish the stack, get it green here, then land it through Shipping.
  
 diff --git a/skills/j-mode/playbooks/multi-phase-plan.md b/skills/j-mode/playbooks/multi-phase-plan.md
-index 4070e31..6f49bb2 100644
+index ec4a9b4..08c9014 100644
 --- a/skills/j-mode/playbooks/multi-phase-plan.md
 +++ b/skills/j-mode/playbooks/multi-phase-plan.md
 @@ -12,7 +12,7 @@
@@ -170,16 +168,16 @@ index 4070e31..6f49bb2 100644
  
  ````markdown
  # <Program> plan
-@@ -57,7 +57,7 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
+@@ -56,7 +56,7 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
  - [ ] Resolve the forge once. Default to `gh`; if `command -v origin` succeeds and Origin can resolve the repository, use `origin pr` for every PR operation. Record any fallback to `gh`. Never require `gt`.
- - [ ] Open the PR ready, never draft, with `origin pr create --status open --base <base-branch>` or `gh pr create --base <base-branch>` according to the resolved forge. A stack child targets its parent branch.
+ - [ ] Open the PR ready, never draft, per **Opening a PR**. Use the run's built-in PR tool when it has one, else `origin pr create --status open --base <base-branch>` or `gh pr create --base <base-branch>` according to the resolved forge. A stack child targets its parent branch.
  - [ ] Run the repo's lint and typecheck once before the PR-facing push. Push with hooks on.
 -- [ ] Run `/deslop` before each commit and `/no-comments` before review.
 +- [ ] Run `/simplify` before each commit and `/no-comments` before review.
  - [ ] Triage every Bugbot and security-reviewer comment per `../references/bugbot-triage.md`.
  - [ ] Rebase onto current trunk before the code-ready report and babysit. Keep that merge base in fix rounds. Rebase again only at merge prep, on a `git merge-tree` conflict with trunk, or on a CI failure that comes from a change on trunk.
  
-@@ -69,7 +69,7 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
+@@ -68,7 +68,7 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
  
  ### Boot recipe, for every live lane
  
@@ -189,24 +187,24 @@ index 4070e31..6f49bb2 100644
  - [ ] `git fetch origin <head-branch> && git checkout <head SHA>`.
  - [ ] <Start the backend and the surface. Wait for ready.>
 diff --git a/skills/j-mode/playbooks/opening-a-pr.md b/skills/j-mode/playbooks/opening-a-pr.md
-index ab99649..59302d8 100644
+index bdf8d63..8ec33ad 100644
 --- a/skills/j-mode/playbooks/opening-a-pr.md
 +++ b/skills/j-mode/playbooks/opening-a-pr.md
 @@ -6,7 +6,7 @@ Invoked at the end of every other playbook.
  
- **Commits.** Commit liberally. Rebase into small, ordered commits before opening PRs. Each commit is a future PR: landable, ordered to tell the story. Amend when the fix belongs in a just-made commit. New commit when separable.
+ **Commits.** Commit liberally. Rebase into small, ordered commits before opening PRs. Each commit is a future PR: landable, ordered to tell the story. Amend when the fix belongs in a just-made commit. New commit when separable. Commit bodies don't restate the subject.
  
--**PRs.** Run `/deslop` from `cursor-team-kit` over the diff before commit. Run `/no-comments` before review. Write every PR title, PR description, and commit body with `/technical-writing`, then apply `/unslop`. Apply every technical-writing layer except Diátaxis. Use one word for each action, keep articles, and avoid `-ing` when a plain verb works.
-+**PRs.** Run `/simplify` over the diff before commit. Run `/no-comments` before review. Write every PR title, PR description, and commit body with `/technical-writing`, then apply `/unslop`. Apply every technical-writing layer except Diátaxis. Use one word for each action, keep articles, and avoid `-ing` when a plain verb works.
+-**PRs.** Run `/deslop` from `cursor-team-kit` over the diff before commit and `/no-comments` before review. Write every PR title, description, and commit body with `/technical-writing` (every layer except Diátaxis, and apply the STE vocabulary rules: one word per action, keep articles, a plain verb over `-ing` where one works), then apply `/unslop`.
++**PRs.** Run `/simplify` over the diff before commit and `/no-comments` before review. Write every PR title, description, and commit body with `/technical-writing` (every layer except Diátaxis, and apply the STE vocabulary rules: one word per action, keep articles, a plain verb over `-ing` where one works), then apply `/unslop`.
  
- **Titles.** Use Conventional Commits in the form `type(scope): subject`. Use `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, or `perf` as the type. Use the changed area, such as `jstack` or `j-mode`, as the scope. Keep the subject short and imperative. Name a real symbol when one carries the change. For example, `fix(jstack): retarget opening-a-pr babysit trigger`. Do not add a trailing period.
+ **Titles.** Conventional Commits `type(scope): subject`, no trailing period. Type such as `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, or `perf`. Scope is the area, such as `jstack` or `j-mode`. Subject is short, imperative, and names a real symbol when one carries the change, for example `fix(jstack): retarget opening-a-pr babysit trigger`.
  
-@@ -30,4 +30,4 @@ After these sections, attach videos or screenshots when they prove a claim. Do n
+@@ -31,4 +31,4 @@ After the sections, attach videos or screenshots when they prove a claim. Full S
  
- **Babysit.** Opening a PR does not start a babysit. Post the URL and keep building. Finish the phase or stack first. Run a separate babysit pass only when the user asks for one after the whole stack exists. A babysit for each new PR stalls the build and spends checks on commits that later waves restart. Push back when feedback drifts from intent.
+ **Babysit.** Opening a PR does not start a babysit. Post the URL and keep building. Finish the phase or stack first. Run a separate babysit pass only when the user asks for one after the whole stack exists. A babysit for each new PR stalls the build and spends checks on commits later waves restart. Push back when feedback drifts from intent.
  
--A subagent that opens a PR runs `interrogate`, `/deslop`, and `/no-comments`, and posts the URL. Then it returns to the parent without babysitting, unless it is an Autopilot-full or Autopilot-stack owner. That owner's brief assigns the babysit loop and is the ask `playbooks/babysit.md` waits for. The owner starts the loop after its code-ready report and reports merge-ready or STACK-READY as its playbook says. The rules here and in `playbooks/babysit.md` that hold babysitting until a whole stack is built do not apply to that owner.
-+A subagent that opens a PR runs `interrogate`, `/simplify`, and `/no-comments`, and posts the URL. Then it returns to the parent without babysitting, unless it is an Autopilot-full or Autopilot-stack owner. That owner's brief assigns the babysit loop and is the ask `playbooks/babysit.md` waits for. The owner starts the loop after its code-ready report and reports merge-ready or STACK-READY as its playbook says. The rules here and in `playbooks/babysit.md` that hold babysitting until a whole stack is built do not apply to that owner.
+-A subagent that opens a PR runs `interrogate`, `/deslop`, and `/no-comments`, and posts the URL. It returns to the parent without babysitting, unless it is an Autopilot-full or Autopilot-stack owner. That owner's brief assigns the babysit loop and is the ask `playbooks/babysit.md` waits for. The owner starts the loop after its code-ready report, reports merge-ready or STACK-READY per its playbook, and is exempt from the rules here and in `playbooks/babysit.md` that hold babysitting until a whole stack is built.
++A subagent that opens a PR runs `interrogate`, `/simplify`, and `/no-comments`, and posts the URL. It returns to the parent without babysitting, unless it is an Autopilot-full or Autopilot-stack owner. That owner's brief assigns the babysit loop and is the ask `playbooks/babysit.md` waits for. The owner starts the loop after its code-ready report, reports merge-ready or STACK-READY per its playbook, and is exempt from the rules here and in `playbooks/babysit.md` that hold babysitting until a whole stack is built.
 diff --git a/skills/j-mode/references/bugbot-triage.md b/skills/j-mode/references/bugbot-triage.md
 index b2fc7d3..2d10e4b 100644
 --- a/skills/j-mode/references/bugbot-triage.md
@@ -218,13 +216,13 @@ index b2fc7d3..2d10e4b 100644
  Use this reference when the Babysit playbook (`../playbooks/babysit.md`) handles Bugbot or review-automation comments. The goal is not to ignore Bugbot by default. The goal is to stop treating every comment as a required code change.
  
 diff --git a/skills/reflect/SKILL.md b/skills/reflect/SKILL.md
-index 22362e5..9dd0a88 100644
+index b1ebb33..832eddf 100644
 --- a/skills/reflect/SKILL.md
 +++ b/skills/reflect/SKILL.md
-@@ -57,9 +57,9 @@ Backlog items file to whatever devex / backlog tracker your team uses automatica
- For each approved Accepted item, follow the Routing field exactly:
+@@ -53,9 +53,9 @@ Never edit a skill under `plugins/cache/`. Before approval, show its destination
+ Follow each approved row's Routing exactly:
  
- - Trivial existing-skill edit (a one-line bullet, a tightened sentence, a stale fact corrected): parent does directly.
+ - Trivial existing-skill edit (a one-line bullet, a tightened sentence, a stale fact corrected): the parent does it directly.
 -- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to Cursor's built-in `create-skill` skill and run its draft / test / iterate loop.
 -- `tune description: <skill path>` (the skill exists but didn't trigger when it should have): hand to `create-skill` and run its description-optimization loop.
 -- `new skill via create-skill: <kebab-name>`: hand creation to `create-skill`. Do not invent the shape ad hoc.
@@ -232,10 +230,10 @@ index 22362e5..9dd0a88 100644
 +- `tune description: <skill path>` (the skill exists but didn't trigger when it should have): hand to `skill-creator` and run its description-optimization loop.
 +- `new skill via skill-creator: <kebab-name>`: hand creation to `skill-creator`. Do not invent the shape ad hoc.
  
- If your environment ships a SKILL.md validator, run it on every touched skill before declaring done. Skip this step if it doesn't.
+ If your environment ships a SKILL.md validator, run it on every touched skill before declaring done.
  
 diff --git a/skills/reflect/references/synthesizer.md b/skills/reflect/references/synthesizer.md
-index d0e7819..fa637e0 100644
+index 1a090d8..6d1dfef 100644
 --- a/skills/reflect/references/synthesizer.md
 +++ b/skills/reflect/references/synthesizer.md
 @@ -14,7 +14,7 @@ Apply each criterion to every finding:
@@ -257,10 +255,10 @@ index d0e7819..fa637e0 100644
  One row per finding. The user approves row by row.
  
 diff --git a/skills/why/SKILL.md b/skills/why/SKILL.md
-index 3a84c4b..3ae229a 100644
+index 576df63..9f16bc6 100644
 --- a/skills/why/SKILL.md
 +++ b/skills/why/SKILL.md
-@@ -61,7 +61,7 @@ Capture this as seed context (file paths, symbols, commits, PR numbers, linked t
+@@ -32,7 +32,7 @@ Before spawning investigators, build the seed context inline: file paths and lin
  
  ### Discovery
  
