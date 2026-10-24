@@ -306,7 +306,7 @@ index 47e0891..fc05ad5 100755
  		if [ -n "$f" ]; then last_ts=$(echo "$f" | awk '{print $1}')
  			last=$(fmt_day "$last_ts" 2>/dev/null); fi
 diff --git a/skills/ketchup/SKILL.md b/skills/ketchup/SKILL.md
-index 9eef27f..725cce0 100644
+index 9eef27f..ecb67aa 100644
 --- a/skills/ketchup/SKILL.md
 +++ b/skills/ketchup/SKILL.md
 @@ -34,10 +34,10 @@ For a call between options, give every option the work weighed, each with what i
@@ -314,7 +314,7 @@ index 9eef27f..725cce0 100644
  ## Visuals
  
 -A visual is a picture: a screenshot, a video, a Mermaid diagram, a chart or diagram from `/visualize`, or a generated image. A Markdown table is not a visual, even with before and after columns.
-+A visual is a picture: a screenshot, a video, a Mermaid diagram, a Mermaid chart or diagram, or a generated image. A Markdown table is not a visual, even with before and after columns.
++A visual is a picture: a screenshot, a video, a Mermaid diagram or chart, or a generated image. A Markdown table is not a visual, even with before and after columns.
  
  When something is easier to grasp as a picture than as sentences, draw it: how a design or system works, a PR stack or dependency chain with each PR's state, a before and after of a fix, or options side by side. Never draw a status list, a list of action items, or boxes with nothing connecting them. Never give a fact twice, in text or across visuals.
  

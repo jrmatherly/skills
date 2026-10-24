@@ -12,7 +12,7 @@ dir="$(cd "$dir" 2> /dev/null && pwd -P)" || { echo "check-jstack: no such direc
 fail=0
 bad() { echo "$*" >&2; fail=1; }
 
-forbidden='\bpoteto|\bpstack\b|[A-Za-z]jstack|lauren|~/\.cursor|\.cursor/|\bCursor\b|AskQuestion\b|generalPurpose|cursor-team-kit|\bdeslop\b|control-ui|control-cli|\bcreate-skill\b|agent-transcripts|environment: "cloud"|\bGrok\b|gpt-5\.|claude-opus-[0-9-]+-(max|xhigh|high|medium)|\.mdc\b|is_background|\bTask tool\b|\bTask spawn\b|[Gg]rok\b|composer-|/visualize|^mode: true|^icon:|^reminder:'
+forbidden='\bpoteto|\bpstack\b|[A-Za-z]jstack|lauren|~/\.cursor|\.cursor/|\bCursor\b|AskQuestion\b|generalPurpose|cursor-team-kit|\bdeslop\b|control-ui|control-cli|\bcreate-skill\b|agent-transcripts|environment: "cloud"|gpt-5\.|claude-opus-[0-9-]+-(max|xhigh|high|medium)|\.mdc\b|is_background|\bTask tool\b|\bTask spawn\b|[Gg]rok\b|composer-|/visualize|^mode: true|^icon:|^reminder:'
 while IFS= read -r hit; do bad "$hit: upstream/Cursor reference"; done \
   < <(grep -rnEI --exclude=LICENSE --exclude=bun.lock --exclude=plugin.json "$forbidden" "$dir")
 
