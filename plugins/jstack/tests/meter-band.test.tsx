@@ -10,7 +10,7 @@ const USAGE: SessionUsage = {
   rateLimits: [{ kind: 'five_hour', percentUsed: 12, resetsAt: '2026-10-22T15:40:00Z' }, { kind: 'seven_day', percentUsed: 60 }],
   cost: { usd: 0.42 },
 }
-type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean; board?: boolean }
+type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean; board?: boolean; memory?: string }
 function world(on: On, w: World = {}) {
   const ran: unknown[] = []
   const toasts: string[] = []
@@ -18,6 +18,10 @@ function world(on: On, w: World = {}) {
   const files: Record<string, string> = { '/home/u/.claude/.ponytail-active': 'full\n' }
   if (w.hasPackage !== false) files['/home/u/package.json'] = w.scripts ?? '{"scripts":{"check":"x"}}'
   if (w.board) files['/home/u/.config/ponytail/band/board.html'] = '<html>'
+  if (w.memory) {
+    files['/home/u/.hindsight/coding-agent.json'] = w.memory
+    files['/home/u/.hindsight/profiles/coding-agent.ui.port'] = '19077\n'
+  }
   mock.env(on, { HOME: '/home/u' })
   const saved = new Map<string, unknown>(w.details ? [['details', true]] : [])
   on('store.get', ($, e) => ({ value: saved.get(e.key) }))
@@ -37,7 +41,7 @@ function world(on: On, w: World = {}) {
   on('turn.complete', () => ({ text: '' }))
   on('ui.toast', ($, e) => { toasts.push(e.text); return { value: undefined } })
   on('ui.render', () => ({ type: 'Text', props: {}, children: ['below'] }))
-  return { ran, toasts, saved }
+  return { ran, toasts, saved, files }
 }
 
 const start = ($: Engine) => $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/home/u' })
@@ -169,6 +173,57 @@ test('Board without a board page toasts instead of opening', async ($, on) => {
   await ui.select({ key: 'actions', value: 'board' })
   expect(opened).toEqual([])
   expect(toasts).toEqual(['Ponytail has not built the board yet; it writes it after the first turn'])
+})
+const MEMORY = '{"optInOnly":true,"optInPaths":["~"],"embedVersion":"1.1.0"}'
+test('Memory starts the Hindsight dashboard, opens its recorded port, and toasts a failed start', async ($, on) => {
+  const { toasts } = world(on, { memory: MEMORY })
+  const argv: unknown[] = []
+  const results = [PASS, PASS, { ...PASS, exitCode: 1, stderr: 'uv: no such tool\n' }]
+  on('process.run', ($, e) => { argv.push(e.argv); return { value: results.shift()! } })
+  await start($)
+  await turn($)
+  const ui = await mount($)
+  const options = (await ui.find({ key: 'actions' }))?.props.options as { label: string }[]
+  expect(options.map(o => o.label)).toEqual(['…', 'Simplify', 'Review', 'Remember', 'Board', 'Check', 'Memory'])
+  await ui.select({ key: 'actions', value: 'memory' })
+  await ui.select({ key: 'actions', value: 'memory' })
+  const startUi = ['uvx', 'hindsight-embed@1.1.0', '-p', 'coding-agent', 'ui', 'start', '--hostname', '127.0.0.1']
+  expect(argv).toEqual([startUi, ['open', 'http://localhost:19077'], startUi])
+  expect(toasts).toEqual(['could not start the memory dashboard: uv: no such tool'])
+  await ui.press({ key: 'details' })
+  const memory = await tile(ui, 'memory')
+  expect(memory.text).toEqual(['memory', 'on'])
+  expect(memory.props[1]?.dimColor).toBe(false)
+})
+test('Memory follows the config at click time: a local embed checkout and profile, the default port when none is recorded, and the kill switch', async ($, on) => {
+  const { toasts, files } = world(on, { memory: '{"embedPackagePath":"/src/embed","daemonProfile":"lab"}', details: true })
+  const argv: unknown[] = []
+  on('process.run', ($, e) => { argv.push(e.argv); return { value: PASS } })
+  await start($)
+  await turn($)
+  const ui = await mount($)
+  await ui.select({ key: 'actions', value: 'memory' })
+  expect(argv).toEqual([['uv', 'run', '--directory', '/src/embed', 'hindsight-embed', '-p', 'lab', 'ui', 'start', '--hostname', '127.0.0.1'], ['open', 'http://localhost:19077']])
+  expect((await tile(ui, 'memory')).text).toEqual(['memory', 'on'])
+  await ui.unmount()
+  files['/home/u/.hindsight/coding-agent.json'] = '{"disabled":true}'
+  const off = await mount($)
+  await off.select({ key: 'actions', value: 'memory' })
+  expect(argv.length).toBe(2)
+  expect(toasts).toEqual(['memory is off; `hindsight-memory on` first'])
+  const memory = await tile(off, 'memory')
+  expect(memory.text).toEqual(['memory', 'off'])
+  expect(memory.props[1]?.dimColor).toBe(true)
+  await off.unmount()
+  files['/home/u/.hindsight/coding-agent.json'] = '{nope'
+  expect((await tile(await mount($), 'memory')).text).toEqual(['memory', 'n/a'])
+})
+test('without a Hindsight config there is no Memory action and no memory tile', async ($, on) => {
+  world(on, { details: true })
+  await start($)
+  await turn($)
+  const ui = await mount($)
+  expect(await ui.find({ key: 'tile-memory' })).toBeUndefined()
 })
 test('a command missing from command.list leaves its action out', async ($, on) => {
   world(on, { commands: ['code-review'] })

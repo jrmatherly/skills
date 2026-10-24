@@ -17,6 +17,7 @@ const EMPTY: Meter = {
   levelPath: null,
   boardPath: null,
   hasCheck: false,
+  memoryConfig: null,
   details: false,
   agentsOpen: false,
 }
@@ -66,6 +67,16 @@ async function hasCheckScript($: EngineInterface): Promise<boolean> {
     return false
   }
 }
+// shortcut: the file only; the hooks also take HINDSIGHT_DISABLED, HINDSIGHT_DAEMON_PROFILE, HINDSIGHT_EMBED_VERSION,
+// HINDSIGHT_EMBED_PACKAGE_PATH and per-path or per-harness overrides, mirror them if the band and the hooks disagree
+type MemoryConfig = { disabled?: boolean; daemonProfile?: string; embedVersion?: string; embedPackagePath?: string; apiPort?: number }
+async function readMemory($: EngineInterface, config: string): Promise<MemoryConfig | null> {
+  try {
+    return JSON.parse(await $.fs.read(config)) as MemoryConfig
+  } catch {
+    return null
+  }
+}
 let checking = false
 async function check($: EngineInterface): Promise<void> {
   if (checking) {
@@ -84,15 +95,56 @@ async function check($: EngineInterface): Promise<void> {
   }
 }
 
+// shortcut: macOS `open` only; add xdg-open and `cmd /c start` when the band runs elsewhere
+async function openTarget($: EngineInterface, target: string, what: string): Promise<void> {
+  const r = await $.process.run(['open', target])
+  if (r.exitCode !== 0) $.ui.toast(`could not open the ${what}: ${r.stderr.trim().slice(-200) || target}`)
+}
+
+let openingMemory = false
+async function openMemory($: EngineInterface, config: string): Promise<void> {
+  if (openingMemory) {
+    $.ui.toast('the memory dashboard is already starting')
+    return
+  }
+  openingMemory = true
+  try {
+    // Read at click time so `hindsight-memory off` or `upgrade` mid-session is honoured
+    const c = await readMemory($, config)
+    if (!c) {
+      $.ui.toast(`could not read ${config}`)
+      return
+    }
+    if (c.disabled) {
+      $.ui.toast('memory is off; `hindsight-memory on` first')
+      return
+    }
+    const profile = c.daemonProfile || 'coding-agent'
+    // The hook package's own rule for launching the embed (getEmbedCommand in its daemon starter)
+    const embed = c.embedPackagePath ? ['uv', 'run', '--directory', c.embedPackagePath, 'hindsight-embed'] : ['uvx', `hindsight-embed@${c.embedVersion || 'latest'}`]
+    // Starts the daemon when it is down and returns once the page answers (about 15 s cold); a second start is a no-op
+    const r = await $.process.run([...embed, '-p', profile, 'ui', 'start', '--hostname', '127.0.0.1'], { timeoutMs: 180000 })
+    if (r.exitCode !== 0) {
+      $.ui.toast(`could not start the memory dashboard: ${(r.stderr.trim() || r.stdout.trim()).slice(-200)}`)
+      return
+    }
+    // The embed records the dashboard's port per profile next to its logs, but only when it did the start itself; its default is the daemon's port plus 10000
+    const recorded = await $.fs.read(`${await $.env.get('HOME')}/.hindsight/profiles/${profile}.ui.port`).catch(() => '')
+    await openTarget($, `http://localhost:${recorded.trim() || (c.apiPort ?? 9077) + 10000}`, 'memory dashboard')
+  } catch (err) {
+    $.ui.toast(`could not open the memory dashboard: ${err instanceof Error ? err.message : String(err)}`)
+  } finally {
+    openingMemory = false
+  }
+}
+
 async function openBoard($: EngineInterface, file: string): Promise<void> {
   try {
     if (!(await $.fs.exists(file))) {
       $.ui.toast('Ponytail has not built the board yet; it writes it after the first turn')
       return
     }
-    // shortcut: macOS `open` only; add xdg-open and `cmd /c start` when the band runs elsewhere
-    const r = await $.process.run(['open', file])
-    if (r.exitCode !== 0) $.ui.toast(`could not open the board: ${r.stderr.trim().slice(-200) || file}`)
+    await openTarget($, file, 'board')
   } catch (err) {
     $.ui.toast(`could not open the board: ${err instanceof Error ? err.message : String(err)}`)
   }
@@ -107,10 +159,11 @@ export async function syncMeter($: EngineInterface, reset: boolean): Promise<voi
   const levelPath = config ? `${config}/.ponytail-active` : null
   const xdg = (await $.env.get('XDG_CONFIG_HOME')) ?? (home ? `${home}/.config` : null)
   const boardPath = xdg && commands.includes(PONYTAIL) ? `${xdg}/ponytail/band/board.html` : null
-  const hasCheck = await hasCheckScript($)
+  const hindsight = (await $.env.get('HINDSIGHT_CONFIG')) ?? (home ? `${home}/.hindsight/coding-agent.json` : null)
+  const [hasCheck, memoryConfig] = await Promise.all([hasCheckScript($), hindsight && (await $.fs.exists(hindsight)) ? hindsight : null])
   const details = (await $.store.get('details')) === true
   const agentsOpen = (await $.store.get('agentsOpen')) === true
-  await update($, meter, prev => ({ ...(reset ? EMPTY : prev), commands, levelPath, boardPath, hasCheck, details, agentsOpen }))
+  await update($, meter, prev => ({ ...(reset ? EMPTY : prev), commands, levelPath, boardPath, hasCheck, memoryConfig, details, agentsOpen }))
 }
 
 export function registerMeter(on: On): void {
@@ -153,7 +206,9 @@ export function registerMeter(on: On): void {
     if (e.props.hasSurvey) return next(e)
     const m = await read($, meter)
     const ponytail = m.commands.includes(PONYTAIL)
-    const [active, below] = await Promise.all([ponytail && m.levelPath ? readLevel($, m.levelPath) : null, next(e)])
+    const [active, hindsight, below] = await Promise.all([ponytail && m.levelPath ? readLevel($, m.levelPath) : null, m.memoryConfig ? readMemory($, m.memoryConfig) : null, next(e)])
+    // A config the band can't parse shows as n/a, so the tile tells an unreadable file from Hindsight not being installed
+    const memory = m.memoryConfig ? (hindsight ? (hindsight.disabled ? 'off' : 'on') : 'n/a') : null
     const elements = $.ui.resolve(e)
     const { Box, Text, Button } = elements
     // Mobile's table has no Select, so the menus are left out there
@@ -163,6 +218,7 @@ export function registerMeter(on: On): void {
       { key: 'tokens', label: 'tokens', value: `${short(m.tokens.input + m.tokens.cacheWrite)} in · ${short(m.tokens.output)} out`, sub: `${short(m.tokens.cacheRead)} cached` },
       { key: 'turns', label: 'turns', value: `${m.turns}` },
       { key: 'time', label: 'agent time', value: elapsed(m.busyMs) },
+      ...(memory ? [{ key: 'memory', label: 'memory', value: memory, isDim: memory !== 'on' }] : []),
       ...m.limits.map(l => ({
         key: `limit-${l.kind}`,
         label: QUOTA[l.kind] ?? l.kind,
@@ -171,11 +227,12 @@ export function registerMeter(on: On): void {
         color: l.percentUsed >= 95 ? ('error' as const) : l.percentUsed >= 80 ? ('warning' as const) : undefined,
       })),
     ]
-    const boardPath = m.boardPath
+    const { boardPath, memoryConfig } = m
     const actions = [
       ...COMMANDS.filter(c => m.commands.includes(c.command)).map(c => ({ value: c.value, label: c.label, run: () => $.command.run({ command: c.command }) })),
       ...(boardPath ? [{ value: 'board', label: 'Board', run: () => openBoard($, boardPath) }] : []),
       ...(m.hasCheck ? [{ value: 'check', label: 'Check', run: () => check($) }] : []),
+      ...(memoryConfig ? [{ value: 'memory', label: 'Memory', run: () => openMemory($, memoryConfig) }] : []),
     ]
     const running = Object.entries(m.running)
     return (

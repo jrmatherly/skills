@@ -22,6 +22,8 @@ export type Meter = {
   // Ponytail's task board page, set when Ponytail is installed; its band module rebuilds the file after every turn
   boardPath: string | null
   hasCheck: boolean
+  // Hindsight coding memory's config file, when it is installed; its kill switch is read on every draw, as the Level file is
+  memoryConfig: string | null
   // Persisted in $.store: the metrics row shown, and the running agents listed one per line
   details: boolean
   agentsOpen: boolean

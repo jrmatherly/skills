@@ -25,8 +25,8 @@ jstack's skills set `disable-model-invocation`, so they stay out of Claude's aut
 jstack also ships a mod (a hooks module) that draws a band above the prompt. The band shows:
 
 - the j-mode step row
-- one line with the context fill (green, yellow from 60%, red from 85%), a Level menu for Ponytail, an Actions menu and a More toggle. Actions holds Simplify, Review, Remember, Board (opens Ponytail's task board page when Ponytail is installed) and Check (runs `pnpm check` in the session's folder when its `package.json` has a `check` script). A menu entry whose slash command is not installed is left out.
-- with More on, stat tiles for the cost, tokens (in, out and cached apart), turns, agent time and the 5h and 7d quota with reset times
+- one line with the context fill (green, yellow from 60%, red from 85%), a Level menu for Ponytail, an Actions menu and a More toggle. Actions holds Simplify, Review, Remember, Board (opens Ponytail's task board page when Ponytail is installed), Check (runs `pnpm check` in the session's folder when its `package.json` has a `check` script) and Memory (when `~/.hindsight/coding-agent.json` exists: starts Hindsight's daemon and Control Plane with the embed and profile that config names, `uvx hindsight-embed@<embedVersion> -p <daemonProfile> ui start --hostname 127.0.0.1`, then opens the port recorded in `~/.hindsight/profiles/<daemonProfile>.ui.port`). A menu entry whose slash command is not installed is left out.
+- with More on, stat tiles for the cost, tokens (in, out and cached apart), turns, agent time, the 5h and 7d quota with reset times and, with Hindsight installed, the memory state (on, off when the config's `disabled` kill switch is set, n/a when the file won't parse; Memory refuses to start the daemon while it is off)
 - a separate row counting running and finished subagents, which expands to one line per agent (type and model)
 
 The More and agents choices persist through `$.store`. The mobile app has no Select, so it gets no menus. The mod needs Claude Code 2.1.299 or later (`Text tabular`) and was tested on 2.1.310.
