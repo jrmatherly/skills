@@ -186,7 +186,7 @@ index 65e9d6d..531e317 100644
     - Accept only when the metric moves past noise and the gate stays green. Otherwise revert the change in full. A tweak that "might help" is not kept.
     - One commit per accepted fix, staging only the files you changed (`git add <files>`, never `-A`). Log the row either way, kept or reverted.
 diff --git a/skills/j-mode/playbooks/multi-phase-plan.md b/skills/j-mode/playbooks/multi-phase-plan.md
-index e7b8cd5..008df39 100644
+index d49c782..d4c73ab 100644
 --- a/skills/j-mode/playbooks/multi-phase-plan.md
 +++ b/skills/j-mode/playbooks/multi-phase-plan.md
 @@ -4,13 +4,13 @@
@@ -196,7 +196,7 @@ index e7b8cd5..008df39 100644
 -3. Explore in subagents with `subagent_type: "j-agent"` and an explicit model per the Subagents section (the **principle-guard-the-context-window** skill). Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section. Each returns file pointers, conventions, test commands, and entry points. No inlined dumps.
 +3. Explore in subagents with `subagent_type: "jstack:j-agent"` and an explicit model and effort per the Subagents section (the **principle-guard-the-context-window** skill). Pick each subagent's reasoning level (`effort`) for the job, per the Subagents section. Each returns file pointers, conventions, test commands, and entry points. No inlined dumps.
  4. Copy the skeleton below into the plan file and fill every placeholder. Unless the operator names a path, write the file under the agent store's `docs/`. Keep every heading and every sub-block in the order shown. One section per PR. One PR is one change with its own evidence (the **principle-sequence-verifiable-units** skill). Name the execution playbook in **How to read this**. Pick between `playbooks/autopilot-full.md` and `playbooks/autopilot-stack.md` per the rule at the end of `playbooks/autopilot-stack.md`. A standing program takes `playbooks/orchestrate.md`.
- 5. Write under `/technical-writing` in full, then `/unslop`. The body is one Diátaxis mode, how-to. Appendices hold explanation and reference. Each heading states the task or the finding. No long dashes. No mid-sentence colons.
+ 5. Write under the **technical-writing** skill in full, then the **unslop** skill. The body is one Diátaxis mode, how-to. Appendices hold explanation and reference. Each heading states the task or the finding. No long dashes. No mid-sentence colons.
  6. Run `node <jstack>/skills/j-mode/scripts/check-plan.mjs <plan.md>` and fix every line it prints (the **principle-encode-lessons-in-structure** skill).
  7. Hand back. Post the plan path and the script's output, then stop. Execution starts on the operator's explicit go, under the execution playbook the plan names.
  
@@ -206,7 +206,7 @@ index e7b8cd5..008df39 100644
  **Control skill.** Pick it by surface. Browser, Electron, and web UIs use the `chrome-devtools-mcp:chrome-devtools` skill. CLIs and TUIs use the `run` skill. Native mobile uses whatever simulator-driving skill the repo has. A PR that touches two surfaces gets lanes on both. A surface with no control skill is a risk in Appendix C, and its live block still names how each lane drives it.
  
 diff --git a/skills/j-mode/playbooks/opening-a-pr.md b/skills/j-mode/playbooks/opening-a-pr.md
-index 8ec33ad..98185bd 100644
+index 78aa899..8499167 100644
 --- a/skills/j-mode/playbooks/opening-a-pr.md
 +++ b/skills/j-mode/playbooks/opening-a-pr.md
 @@ -2,7 +2,7 @@
