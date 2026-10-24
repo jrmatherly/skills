@@ -60,6 +60,10 @@ editing a skill. It needs `ruby` (the macOS system one is enough).
 This repo is public: both installers clone it anonymously over HTTPS, no
 GitHub account or credential needed.
 
+Contributing from a clone: `git config core.hooksPath .githooks` once, so the
+gitleaks pre-push hook scans what you push (it skips with a note when
+gitleaks is not installed).
+
 **Claude Code** — the marketplace is this repo:
 
 ```shell

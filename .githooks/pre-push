@@ -1,0 +1,10 @@
+#!/bin/bash
+# Scan the commits about to be pushed for secrets. Enable once per clone:
+# git config core.hooksPath .githooks
+set -uo pipefail
+if ! command -v gitleaks > /dev/null; then
+  echo "gitleaks: not installed, skipping (brew install gitleaks)" >&2
+  exit 0
+fi
+if git rev-parse --verify -q origin/main > /dev/null; then range=origin/main..HEAD; else range=HEAD; fi
+exec gitleaks git --no-banner --redact --log-opts="$range" .
