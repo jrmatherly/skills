@@ -1,12 +1,11 @@
 diff --git a/agents/comment-sicko.md b/agents/comment-sicko.md
-index 9a688b8..e649e86 100644
+index 209e370..e649e86 100644
 --- a/agents/comment-sicko.md
 +++ b/agents/comment-sicko.md
 @@ -1,6 +1,6 @@
  ---
--name: Comment Sicko
+ name: comment-sicko
 -description: A deranged comment-hater that savors deletion and condemns workaround code.
-+name: comment-sicko
 +description: A ruthless comment auditor. Deletes narration, history and stale comments, tightens the useful ones, keeps concise current comments that explain a non-obvious why, and flags code that needs a comment only because the code is unclear.
  ---
  
@@ -48,10 +47,10 @@ index 9a688b8..e649e86 100644
 -Report only. Name touched files, deletion count, `MUST KILL` flags with one line each, and skips.
 +Report only. Name touched files, counts of kept, rewritten, and deleted comments, `MUST KILL` flags with one line each, and skips.
 diff --git a/skills/j-mode/SKILL.md b/skills/j-mode/SKILL.md
-index 9e46e11..fa845cf 100644
+index c9326f5..e4e6794 100644
 --- a/skills/j-mode/SKILL.md
 +++ b/skills/j-mode/SKILL.md
-@@ -110,7 +110,7 @@ Every playbook ends with a reply written this way, PR link as `https://github.co
+@@ -116,7 +116,7 @@ Every playbook ends with a reply written this way, PR link as `https://github.co
  
  ## Comments
  
@@ -61,7 +60,7 @@ index 9e46e11..fa845cf 100644
  ## Playbooks
  
 diff --git a/skills/no-comments/SKILL.md b/skills/no-comments/SKILL.md
-index 3b3e762..039f339 100644
+index bd04b9f..603b6b2 100644
 --- a/skills/no-comments/SKILL.md
 +++ b/skills/no-comments/SKILL.md
 @@ -1,14 +1,14 @@
@@ -86,10 +85,10 @@ index 3b3e762..039f339 100644
  
  ## Steps
  
--1. Spawn `Task` with `subagent_type: "Comment Sicko"`. Pass the scope. Do not restate its rules.
+-1. Spawn `Task` with `subagent_type: "comment-sicko"`. Pass the scope. Pick each subagent's reasoning level (`effort`) for the job, per the Subagents section of the **j-mode** skill. Do not restate its rules.
 -2. Inspect its report and diff. Reject application-code edits, scope escapes, exception-protected deletions, misstated `MUST KILL` reasons, and flags that treat kept intentional code as guilty. Reshape flags on our-code surprises stay actionable. Do not restore those comments. A keep survives only with proof it is about something we cannot change. Audit missed scoped lint and TypeScript suppressions. Correctness or safety suppressions stay actionable `MUST KILL`s. Restore deletions only with exact exceptions and scoped proof. Before accepting thin `IMPORTANT` or `do not remove` kills or keeps, run `/how` or `/why` on their symbol. If a kill is ambiguous, do not restore. If a keep is refuted or still ambiguous, delete it. Revert and rerun one rejected report with the failure named. Reject a second, report it open, and fail `/no-comments`.
 -3. Fix trivial accepted flags directly by deleting a dead path, dropping a parameter, or using the real API. If any fix needs a shape, run `/architect` once for the accepted set and surrounding code. Stop at the sketch. Architect shapes. Step 4 implements.
-+1. Spawn an Agent with `subagent_type: "jstack:comment-sicko"`. Pass the scope. Do not restate its rules.
++1. Spawn an Agent with `subagent_type: "jstack:comment-sicko"`. Pass the scope. Pick each subagent's reasoning level (`effort`) for the job, per the Subagents section of the **j-mode** skill. Do not restate its rules.
 +2. Inspect its report and diff. Reject application-code edits, scope escapes, deletions of comments its keep rule protects, rewrites that change meaning, and `MUST KILL` flags with misstated reasons. Audit lint and TypeScript suppressions it missed: ones that hide a correctness or safety problem stay actionable `MUST KILL`s. Before accepting a verdict on a thin `IMPORTANT` or `do not remove` comment, check its claim with the **how** or **why** skill (read `${CLAUDE_PLUGIN_ROOT}/skills/how/SKILL.md` or `${CLAUDE_PLUGIN_ROOT}/skills/why/SKILL.md` and follow it): a claim that holds is a keep or a rewrite, a refuted one goes. Revert and rerun one rejected report with the failure named. Reject a second, report it open, and fail `/jstack:no-comments`.
 +3. Fix trivial accepted flags directly by deleting a dead path, dropping a parameter, or using the real API. If any fix needs a shape, follow the **architect** skill (`${CLAUDE_PLUGIN_ROOT}/skills/architect/SKILL.md`) once for the accepted set and surrounding code. Stop at the sketch. Architect shapes. Step 4 implements.
  4. Implement the smallest root-cause fix in scope. Remove every named workaround. If the root cause is out of scope, land the smallest in-scope fix and report the rest open. The **principle-fix-root-causes** and **principle-redesign-from-first-principles** skills guide intent only. Neither authorizes widening the fence nor fixing instances outside it. Never bolt on symptom guards.
