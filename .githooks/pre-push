@@ -6,5 +6,17 @@ if ! command -v gitleaks > /dev/null; then
   echo "gitleaks: not installed, skipping (brew install gitleaks)" >&2
   exit 0
 fi
-if git rev-parse --verify -q origin/main > /dev/null; then range=origin/main..HEAD; else range=HEAD; fi
-exec gitleaks git --no-banner --redact --log-opts="$range" .
+zero=0000000000000000000000000000000000000000
+ranges=(); lines=0
+# git feeds one line per ref: <local ref> <local sha> <remote ref> <remote sha>
+while read -r _ local_sha _ remote_sha; do
+  lines=$((lines + 1))
+  [ "$local_sha" = "$zero" ] && continue # a deletion pushes nothing
+  if [ "$remote_sha" = "$zero" ]; then ranges+=("$local_sha --not --remotes"); else ranges+=("$remote_sha..$local_sha"); fi
+done
+if [ "$lines" -eq 0 ]; then # run by hand, not by git
+  if git rev-parse --verify -q origin/main > /dev/null; then ranges=(origin/main..HEAD); else ranges=(HEAD); fi
+fi
+for range in "${ranges[@]}"; do
+  gitleaks git --no-banner --redact --log-opts="$range" . || exit 1
+done

@@ -118,7 +118,9 @@ installed with `npx skills ls -g`.
 shellcheck over the scripts, hooks and tests, `scripts/check-resume`,
 `scripts/check-jstack --no-types` (validate and `claude plugin test`, no
 login needed) and the j-mode scripts' Bun tests, plus a gitleaks job over
-the whole history. The type-check and the full `scripts/sync-jstack` stay
+the whole history. The job installs the current Claude Code release on
+purpose: a validate or test failure after a Claude Code update is news about
+the mod, not noise. The type-check and the full `scripts/sync-jstack` stay
 local, since they need the declarations `/plugin-authoring` writes.
 
 ## Add a skill

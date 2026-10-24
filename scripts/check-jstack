@@ -42,6 +42,19 @@ while IFS=: read -r f _ ref; do
 done < <(grep -rnoE --include='*.md' '\*\*[a-z][a-z0-9-]*\*\*( and \*\*[a-z][a-z0-9-]*\*\*)? (principle )?skill' "$dir" \
   | sed -E 's/^([^:]+:[0-9]+:)\*\*([a-z0-9-]+)\*\* and \*\*([a-z0-9-]+)\*\*.*/\1**\2**\n\1**\3**/')
 
+# Every backticked `/name` must be a jstack skill, a Claude Code built-in, or a
+# plugin command the fork names on purpose (`/jstack:<skill>`, `/skill-creator:skill-creator`)
+builtins='simplify loop tasks code-review clear branch'
+while IFS=: read -r f _ ref; do
+  ref="${ref#\`/}"; ref="${ref%\`}"
+  case $ref in
+    jstack:*) grep -qx "${ref#jstack:}" <<< "$skills" || bad "$f: /$ref names a missing jstack skill" ;;
+    skill-creator:skill-creator) ;;
+    *:*) bad "$f: /$ref names another plugin's command" ;;
+    *) grep -qx "$ref" <<< "$skills" || grep -qw "$ref" <<< "$builtins" || bad "$f: /$ref is neither a jstack skill nor a Claude Code built-in" ;;
+  esac
+done < <(grep -rnoE --include='*.md' '`/[a-z][a-z0-9-]*(:[a-z][a-z0-9-]*)?`' "$dir/skills" "$dir/agents")
+
 # Nothing upstream may grant itself tools, hooks or servers, or smuggle in
 # links that would be committed and published
 while IFS= read -r hit; do bad "$hit: frontmatter key not allowed in jstack"; done \
