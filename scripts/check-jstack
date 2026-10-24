@@ -54,7 +54,11 @@ types=${JSTACK_CLAUDE_TYPES:-$(ls -t /tmp/claude-"$(id -u)"/bundled-skills/"$hav
 tsdir=$(mktemp -d)
 trap 'rm -rf "$tsdir"' EXIT
 if [ ! -f "$types" ]; then
-  bad "claude-code.d.ts for Claude Code $have: not found, run /plugin-authoring once (README, Refresh the mod types)"
+  if [ -n "${JSTACK_CLAUDE_TYPES:-}" ]; then
+    bad "JSTACK_CLAUDE_TYPES=$types: not found"
+  else
+    bad "claude-code.d.ts for Claude Code $have: not found, run /plugin-authoring once (README, Refresh the mod types)"
+  fi
 elif ! command -v tsc > /dev/null; then
   bad "tsc: not found (mise install npm:typescript)"
 else

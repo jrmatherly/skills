@@ -71,19 +71,21 @@ claude plugin install resume@jrmatherly-skills
 jstack ships a mod (a hooks module) that draws a band above the prompt:
 the j-mode step row, then one line with the context fill (green, yellow
 from 60%, red from 85%), a Level menu for Ponytail, an Actions menu
-(Simplify, Review, Remember, and Check, which runs `pnpm check` in the
+(Simplify, Review, Remember, Board, which opens Ponytail's task board page
+when Ponytail is installed, and Check, which runs `pnpm check` in the
 session's folder when its `package.json` has a `check` script) and a More
 toggle. More adds stat tiles for the cost, tokens (in, out and cached
 apart), turns, agent time and the 5h and 7d quota with reset times. A separate row counts
 running and finished subagents and expands to one line per agent (type and
 model). The More and agents choices persist through `$.store`. The mobile
 app has no Select, so it gets no menus. It needs Claude Code 2.1.299 or
-later (`Text tabular`) and was tested on 2.1.309. `claude plugin validate
+later (`Text tabular`) and was tested on 2.1.310. `claude plugin validate
 plugins/jstack` lists what it can reach as `calls: $.command.list,
 $.command.run, $.env.get, $.fs.read, $.process.run, $.session.cwd,
 $.session.id, $.session.usage, $.state.get, $.state.set, $.store.get,
-$.store.set, $.tool.register, $.ui.resolve, $.ui.toast`. The only process
-it starts is `pnpm check`, on a pick; the only files it reads are
+$.store.set, $.tool.register, $.ui.resolve, $.ui.toast`. The only processes
+it starts are `pnpm check` and macOS `open` on Ponytail's board page, each
+on a pick; the only files it reads are
 Ponytail's `.ponytail-active` level flag and the session folder's
 `package.json`; no network or model calls. Its private tool
 `mcp__jstack__step` costs no model call. A menu entry whose slash command
