@@ -47,18 +47,19 @@ while IFS= read -r link; do bad "$link: symlink"; done < <(find "$dir" -type l)
 
 grep -q 'Copyright (c) 2026 Lauren Tan' "$dir/LICENSE" || bad "LICENSE: upstream notice missing"
 claude plugin validate "$dir" > /dev/null 2>&1 || bad "claude plugin validate $dir failed"
-# validate and test do not type-check (GitHub issue #99771), so tsc runs against a committed copy of the declarations
-types="$root/jstack/types/claude-code.d.ts"
+# validate and test do not type-check (GitHub issue #99771), so tsc runs against the engine's own declarations:
+# /plugin-authoring writes them for the running version under the per-user temp folder (README, Refresh the mod types)
+have=$(claude --version | cut -d' ' -f1)
+types=${JSTACK_CLAUDE_TYPES:-$(ls -t /tmp/claude-"$(id -u)"/bundled-skills/"$have"/*/plugin-authoring/types/claude-code.d.ts 2>/dev/null | head -1)}
 tsdir=$(mktemp -d)
 trap 'rm -rf "$tsdir"' EXIT
 if [ ! -f "$types" ]; then
-  bad "$types: missing (README, Refresh the mod types)"
+  bad "claude-code.d.ts for Claude Code $have: not found, run /plugin-authoring once (README, Refresh the mod types)"
 elif ! command -v tsc > /dev/null; then
   bad "tsc: not found (mise install npm:typescript)"
 else
   built=$(sed -n '1s/.*Claude Code \([0-9][0-9.]*[0-9]\).*/\1/p' "$types")
-  have=$(claude --version | cut -d' ' -f1)
-  [ "$built" = "$have" ] || echo "check-jstack: jstack/types/claude-code.d.ts is from $built, claude is $have" >&2
+  [ "$built" = "$have" ] || echo "check-jstack: $types is from $built, claude is $have" >&2
   cat > "$tsdir/tsconfig.json" << JSON
 {
   "compilerOptions": { "target": "es2023", "lib": ["es2023"], "types": [], "module": "esnext", "moduleResolution": "bundler",

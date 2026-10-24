@@ -2,8 +2,8 @@
 
 Personal [Agent Skills](https://agentskills.io/) for coding agents (Claude Code,
 Codex, Amp, Cursor and others), installed with the
-[Skills CLI](https://github.com/vercel-labs/skills), plus a private Claude Code
-plugin marketplace. Companion to
+[Skills CLI](https://github.com/vercel-labs/skills), plus a Claude Code plugin
+marketplace. Companion to
 [jrmatherly/dotfiles](https://github.com/jrmatherly/dotfiles), whose setup
 installs both and whose `agents/instructions.md` refers to these skills.
 
@@ -57,10 +57,8 @@ editing a skill. It needs `ruby` (the macOS system one is enough).
 
 ## Install
 
-This repo is private: both installers use the Git access you already have. For
-HTTPS that means a credential your git credential helper has stored (e.g.
-`gh auth login` then `gh auth setup-git`, or Git Credential Manager); SSH works
-too.
+This repo is public: both installers clone it anonymously over HTTPS, no
+GitHub account or credential needed.
 
 **Claude Code** — the marketplace is this repo:
 
@@ -160,8 +158,8 @@ agents), applies `jstack/substitutions.tsv` (whole-word renames such as
   upstream license notice is intact, and `claude plugin validate` passes
 - upstream's Bun tests (`bun test orch watch-pr`) and
   `jstack/tests/worktree-audit.sh`
-- `tsc --noEmit` over `hooks/`, `types/` and `tests/` against
-  `jstack/types/claude-code.d.ts`, then `claude plugin test` on a copy that
+- `tsc --noEmit` over `hooks/`, `types/` and `tests/` against the engine's own
+  declarations (Refresh the mod types, below), then `claude plugin test` on a copy that
   holds only the mod (neither `claude plugin validate` nor `claude plugin
   test` type-checks, and the upstream `bun:test` files cannot load in the
   test sandbox)
@@ -212,12 +210,23 @@ patch against the new table rather than editing hunks by hand.
 
 ### Refresh the mod types
 
-`jstack/types/claude-code.d.ts` is the mods API as the installed Claude Code
-declares it. After `claude update`, run `/plugin-authoring` once in a session,
-copy the `claude-code.d.ts` it names over this file and commit. `check-jstack`
-prints a one-line warning while the two versions differ.
+`check-jstack` type-checks the mod against the declarations Claude Code
+itself writes: `/plugin-authoring`, run once in a session, leaves
+`claude-code.d.ts` for the installed version under
+`/tmp/claude-<uid>/bundled-skills/<version>/…/plugin-authoring/types/`, and the
+script takes the copy matching `claude --version` (`JSTACK_CLAUDE_TYPES=<file>`
+names another). After `claude update`, run `/plugin-authoring` again; until
+then the check fails with that instruction. The file is Anthropic's, not
+MIT: the engine's own publishing steps gitignore the copy it writes beside a
+mod, and `jstack/types/claude-code.d.ts` (a local copy, if you keep one) is
+ignored here for the same reason.
 
-### Attribution
+### Attribution and license
+
+Everything here that is not listed below (the `coding-standards` skill, the
+scripts, the jstack patches, this README) is MIT-licensed, see
+[`LICENSE`](LICENSE). The resume plugin and supabase-prompts carry their own
+notices, named in their sections above.
 
 jstack is a fork of [pstack](https://github.com/cursor/plugins/tree/main/pstack)
 by Lauren Tan, MIT-licensed; the upstream notice is kept in

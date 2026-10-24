@@ -1,2 +1,4 @@
 .DS_Store
 node_modules/
+# Anthropic's declarations, written by Claude Code itself (README, Refresh the mod types)
+jstack/types/claude-code.d.ts
