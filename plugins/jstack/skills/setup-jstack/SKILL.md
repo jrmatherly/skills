@@ -1,15 +1,15 @@
 ---
 name: setup-jstack
-description: Configure which models jstack uses per role and how much it spends. Writes a rule that overrides the skill defaults. Use for /setup-jstack, "configure jstack models", "jstack budget", or changing jstack's model choices.
+description: Configure which models jstack uses per role and at what reasoning effort. Writes a rule that overrides the skill defaults. Use for /setup-jstack, "configure jstack models", "jstack budget", or changing jstack's model choices.
 ---
 
 # Setup jstack
 
-Write `~/.claude/rules/jstack-models.md`, a rule Claude Code loads in every session (it has no `paths` frontmatter), that sets jstack's model per role.
+Write `~/.claude/rules/jstack-models.md`, a rule Claude Code loads in every session (it has no `paths` frontmatter), that sets jstack's model and reasoning effort per role.
 
 ## Models
 
-An Agent call takes `model`: `opus`, `sonnet`, `haiku`, `fable`, a full model ID such as `claude-opus-5-5`, or `inherit` (the parent's model). There is no per-call reasoning setting, so the budget below picks models, not effort. Review seats may also be `codex`.
+An Agent call takes `model` (`opus`, `sonnet`, `haiku`, `fable`, or a full model ID such as `claude-opus-5-5`) and `effort` (`low`, `medium`, `high`, `xhigh`, `max`). A role value is `<model> <effort>`, such as `opus medium`. The value `inherit` runs the role on the parent's model and effort (omit both). Review seats may also be `codex`.
 
 ### Codex seats
 
@@ -19,55 +19,51 @@ A `codex` entry in a reviewer or judge list runs that seat through Codex instead
 
 ### 1. Load current state
 
-If `~/.claude/rules/jstack-models.md` exists, read it and treat its `# budget:` line and role values as the current choices. Otherwise start from the `large` table in step 5.
+If `~/.claude/rules/jstack-models.md` exists, read it and treat its `# budget:` line and role values as the current choices. A model-only value from an older rule, such as `opus`, keeps its model and takes the budget's effort. Otherwise start from the step 5 table.
 
 ### 2. Ask for a budget
 
-Use AskUserQuestion with these labels, naming the current budget when the rule records one:
+Use AskUserQuestion with these labels, naming the current budget when the rule records one. With no rule, say that `small` matches the skill defaults.
 
-- `unlimited — opus everywhere it helps`
-- `large — opus for judgment, sonnet for code (default)`
-- `medium — sonnet, opus only for synthesis`
-- `small — sonnet and haiku`
+- `unlimited — max reasoning`
+- `large — xhigh reasoning`
+- `medium — high reasoning`
+- `small — medium reasoning (default)`
 
 ### 3. Apply it
 
-Start from the step 5 table for the chosen budget. On a re-run, keep any role the user changed by hand. Add `codex` to the read-only lists in step 5 only if `command -v codex` succeeds.
+Start from the step 5 table. The budget sets the effort token of every real model value, panel entries included, to `max`, `xhigh`, `high`, or `medium`; `inherit` and `codex` do not change. On a re-run, keep any role the user changed by hand. Add `codex` to the read-only lists in step 5 only if `command -v codex` succeeds.
 
 ### 4. Show the roles and confirm
 
-Show every role with its value. Ask (AskUserQuestion) whether to accept or change specific roles, offering `opus`, `sonnet`, `haiku`, `fable`, `inherit`, and `codex` where allowed. Panel roles (`arena runners`, `architect runners`, `interrogate reviewers`) are lists: one seat per entry, so the list length sets the count. `arena cross-judge pool` is a list Arena picks one entry from, preferring one whose family differs from the parent's. `swarm workers` is every worker's model unless a race assigns one per arm.
+Show every role with its value. Ask (AskUserQuestion) whether to accept or change specific roles, offering `opus`, `sonnet`, `haiku`, `fable`, `inherit`, and `codex` where allowed, each real model paired with an effort and the budget's effort preselected. Panel roles (`arena runners`, `architect runners`, `interrogate reviewers`) are lists: one seat per entry, so the list length sets the count. `arena cross-judge pool` is a list Arena picks one entry from, preferring one whose family differs from the parent's. `swarm workers` is every worker's model unless a race assigns one per arm.
 
 ### 5. Write the rule
 
-Overwrite the whole file (re-runs stay idempotent). `large` is the default; the other budgets change the values as noted.
+Overwrite the whole file (re-runs stay idempotent). Shape, at the `small` budget:
 
 ```
-# jstack model configuration. One line per role. Delete a line to fall back to the skill default.
-# `inherit`: the role runs on the parent's model (omit `model`). `codex`: a read-only seat run by `codex exec`.
-# budget: large
-feature, refactoring: sonnet
-bug-fix: sonnet
-perf-issue: sonnet
-hillclimb: sonnet
-judgment and prose: opus
-hardest tasks: opus
-how explorer: haiku
-how explainer: opus
-why investigators: haiku
-why synthesizer: opus
-reflect tooling: sonnet
-reflect judgment, divergent, synthesizer: opus
-arena runners: opus, sonnet, sonnet
-arena cross-judge pool: opus, sonnet
-swarm workers: sonnet
-architect runners: opus, sonnet, sonnet
-interrogate reviewers: opus, sonnet, haiku
+# jstack model configuration. One line per role, `<model> <effort>`. Delete a line to fall back to the skill default.
+# `inherit`: the role runs on the parent's model and effort (omit both). `codex`: a read-only seat run by `codex exec`.
+# budget: small (medium)
+feature, refactoring: sonnet medium
+bug-fix: sonnet medium
+perf-issue: sonnet medium
+hillclimb: sonnet medium
+judgment and prose: opus medium
+hardest tasks: opus medium
+how explorer: haiku medium
+how explainer: opus medium
+why investigators: haiku medium
+why synthesizer: opus medium
+reflect tooling: sonnet medium
+reflect judgment, divergent, synthesizer: opus medium
+arena runners: opus medium, sonnet medium
+arena cross-judge pool: opus medium, sonnet medium
+swarm workers: sonnet medium
+architect runners: opus medium, sonnet medium
+interrogate reviewers: opus medium, sonnet medium
 ```
-
-- `unlimited`: every `sonnet` above becomes `opus`; explorers and investigators become `sonnet`.
-- `medium`: `judgment and prose`, `hardest tasks`, the explainer and the synthesizers stay `opus`; every other `opus` becomes `sonnet`.
-- `small`: every `opus` becomes `sonnet`, every `sonnet` in a panel or worker role becomes `haiku`.
 
 ### 6. Confirm
 

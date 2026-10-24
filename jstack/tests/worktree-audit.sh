@@ -9,7 +9,8 @@ mkdir -p "$t/home/.claude/projects/$(slug "$t/repo")" "$t/home/.claude/projects/
 # wt-a: mentioned from the main repo's session; wt-b: its own session (cwd)
 printf '{"type":"user","cwd":"%s"}\n' "$t/wt-a/" > "$t/home/.claude/projects/$(slug "$t/repo")/s1.jsonl"
 printf '{"type":"user","cwd":"%s"}\n' "$t/wt-b" > "$t/home/.claude/projects/$(slug "$t/wt-b")/s2.jsonl"
-out=$(HOME="$t/home" bash "$audit" "$t/repo" 2>/dev/null)
+# The fixture has no remote, and the script resolves MERGED against origin/HEAD unless told the base
+out=$(HOME="$t/home" bash "$audit" -b main "$t/repo" 2>/dev/null)
 fail=0
 for w in wt-a wt-b; do
   line=$(printf '%s\n' "$out" | grep "/$w\$")
