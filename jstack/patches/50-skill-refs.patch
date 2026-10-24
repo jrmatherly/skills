@@ -12,7 +12,7 @@ index e649e86..c0f2f92 100644
  `MUST KILL` is for code, not comments: mark the exact symbol whose behavior needs prose only because our own code is unclear, for a rename, extract, type, or rearchitecture that makes it obvious. My verdict ends there. I do not touch the code.
  
 diff --git a/skills/architect/SKILL.md b/skills/architect/SKILL.md
-index bfa0f21..07ab379 100644
+index 8fd3244..0398a65 100644
 --- a/skills/architect/SKILL.md
 +++ b/skills/architect/SKILL.md
 @@ -6,6 +6,8 @@ disable-model-invocation: true
@@ -21,11 +21,11 @@ index bfa0f21..07ab379 100644
  
 +jstack's skills are read, not invoked (they set `disable-model-invocation`): a skill named here lives at `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`.
 +
- Design before implementing. Sketch types, function signatures, class shapes, and module boundaries with `not implemented` bodies and pseudocode. Synthesize across multiple model perspectives, then fill in code against the chosen sketch. If implementation proves the sketch wrong, throw it out and redesign.
+ Sketch types, function signatures, class shapes, and module boundaries with `not implemented` bodies and pseudocode. Synthesize across multiple model perspectives, then fill in code against the chosen sketch.
  
  ## Start
 diff --git a/skills/arena/SKILL.md b/skills/arena/SKILL.md
-index bc3eda1..4d129fe 100644
+index 76eb47a..154ff4f 100644
 --- a/skills/arena/SKILL.md
 +++ b/skills/arena/SKILL.md
 @@ -6,6 +6,8 @@ disable-model-invocation: true
@@ -34,11 +34,11 @@ index bc3eda1..4d129fe 100644
  
 +jstack's skills are read, not invoked (they set `disable-model-invocation`): a skill named here lives at `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`.
 +
- Fan out N parallel attempts at the same task. Read every candidate end to end. Pick the strongest as the base. Graft the best ideas from the others into it. Verify the synthesized result.
+ Open a todolist with one entry per phase (Frame, Fan out, Cross-judge, Pick, Graft, Verify) before launching anything.
  
- ## Start
+ ## Phase A: Frame
 diff --git a/skills/how/SKILL.md b/skills/how/SKILL.md
-index 81ded2c..3682935 100644
+index 7677563..7f03276 100644
 --- a/skills/how/SKILL.md
 +++ b/skills/how/SKILL.md
 @@ -6,6 +6,8 @@ disable-model-invocation: true
@@ -49,9 +49,9 @@ index 81ded2c..3682935 100644
 +
  Explore the codebase to answer "how does X work?" questions. Produce architectural explanations at the level of a senior engineer onboarding onto a subsystem, enough to build a working mental model, not so much that it reads like annotated source code.
  
- Each spawn below names a role line in the `jstack-models.md` rule and a default. Set `model` to that line's value, or to the default if the rule or the line is missing. Leave `model` unset when the value is `inherit`. A `codex` value runs that seat through Codex instead of a subagent (see the **setup-jstack** skill, "Codex seats"); if `command -v codex` fails, use `opus` and say so. If the Agent tool rejects a value, use the default and say so.
+ Every spawn is an Agent subagent with `subagent_type: general-purpose`, briefed as read-only: it explores and explains, and edits nothing. Explorers use the `how explorer` line in the `jstack-models.md` rule (default `haiku medium`), and every explainer uses the `how explainer` line (default `opus medium`). Set `model` and `effort` to that line's value, or to the default if the rule or the line is missing. Leave `model` and `effort` unset when the value is `inherit`. A `codex` value runs that seat through Codex instead of a subagent (see the **setup-jstack** skill, "Codex seats"); if `command -v codex` fails, use the default and say so. If the Agent tool rejects a value, use the default and say so. Pick each subagent's reasoning level (`effort`) for the job, per the Subagents section of the **j-mode** skill.
 diff --git a/skills/interrogate/SKILL.md b/skills/interrogate/SKILL.md
-index fd63b5b..2b12ca8 100644
+index 513480f..44f56f0 100644
 --- a/skills/interrogate/SKILL.md
 +++ b/skills/interrogate/SKILL.md
 @@ -6,6 +6,8 @@ disable-model-invocation: true
@@ -60,11 +60,11 @@ index fd63b5b..2b12ca8 100644
  
 +jstack's skills are read, not invoked (they set `disable-model-invocation`): a skill named here lives at `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`.
 +
- Spawn one reviewer per configured model to adversarially review code changes. Each model gets the same prompt and rubric. The adversarial signal comes from model diversity, not assigned personas.
+ Spawn one reviewer per configured model to adversarially review code changes. The adversarial signal comes from model diversity, not assigned personas. The deliverable is a synthesized verdict. Do NOT auto-apply changes.
  
- The deliverable is a synthesized verdict. Do NOT auto-apply changes.
+ ## Step 1, Scope
 diff --git a/skills/reflect/SKILL.md b/skills/reflect/SKILL.md
-index 96f823c..44fd118 100644
+index de50f67..7977ae0 100644
 --- a/skills/reflect/SKILL.md
 +++ b/skills/reflect/SKILL.md
 @@ -6,6 +6,8 @@ disable-model-invocation: true
@@ -75,9 +75,9 @@ index 96f823c..44fd118 100644
 +
  Mine the current conversation for durable learnings, then route them into skill edits.
  
- ## When to invoke
+ Invoke when the user says "reflect" or "/reflect". Skip when the conversation is trivial, off-topic, or already covered by an existing skill the parent followed correctly. One-offs are not learnings.
 diff --git a/skills/swarm/SKILL.md b/skills/swarm/SKILL.md
-index 19a1511..0a8dff3 100644
+index 860ae3b..9baffdd 100644
 --- a/skills/swarm/SKILL.md
 +++ b/skills/swarm/SKILL.md
 @@ -6,6 +6,8 @@ disable-model-invocation: true
@@ -86,11 +86,11 @@ index 19a1511..0a8dff3 100644
  
 +jstack's skills are read, not invoked (they set `disable-model-invocation`): a skill named here lives at `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`.
 +
- Fan out N parallel background workers. They may cover separate slices, race the same brief, or mix both. The parent waits, aggregates, and returns one report.
- 
  ## Start
+ 
+ Open a todolist with one entry per phase before launching anything.
 diff --git a/skills/why/SKILL.md b/skills/why/SKILL.md
-index 9aa2566..26b0b21 100644
+index 1e9694a..1196b5c 100644
 --- a/skills/why/SKILL.md
 +++ b/skills/why/SKILL.md
 @@ -6,6 +6,8 @@ disable-model-invocation: true
@@ -99,6 +99,6 @@ index 9aa2566..26b0b21 100644
  
 +jstack's skills are read, not invoked (they set `disable-model-invocation`): a skill named here lives at `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`.
 +
- Investigate the motivation and intent behind code.
+ Investigate the motivation and intent behind code. The companion `how` skill answers what the code does and how it works. `why` answers what forces led to its shape.
  
- Companion to the `how` skill. `how` answers what the code does and how it works. `why` answers what forces led to its shape.
+ Each spawn below names a role line in the `jstack-models.md` rule and a default. Set `model` and `effort` to that line's value, or to the default if the rule or the line is missing. Leave `model` and `effort` unset when the value is `inherit`. A `codex` value runs that seat through Codex instead of a subagent (see the **setup-jstack** skill, "Codex seats"); if `command -v codex` fails, use the default and say so. If the Agent tool rejects a value, use the default and say so. Pick each subagent's reasoning level (`effort`) for the job, per the Subagents section of the **j-mode** skill.
