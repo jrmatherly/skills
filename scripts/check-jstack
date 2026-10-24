@@ -5,6 +5,8 @@
 # name can't fall back to the Skill tool).
 set -uo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd -P)"
+no_types=false
+if [ "${1:-}" = --no-types ]; then no_types=true; shift; fi # CI has no declarations; validate and test still run
 dir="${1:-$root/plugins/jstack}"
 dir="$(cd "$dir" 2> /dev/null && pwd -P)" || { echo "check-jstack: no such directory: ${1:-plugins/jstack}" >&2; exit 2; }
 fail=0
@@ -15,6 +17,7 @@ while IFS= read -r hit; do bad "$hit: upstream/Cursor reference"; done \
   < <(grep -rnEI --exclude=LICENSE --exclude=bun.lock --exclude=plugin.json "$forbidden" "$dir")
 
 for f in "$dir"/skills/*/SKILL.md; do
+  [ -e "$f" ] || continue # bash 3.2 has no nullglob: an empty skills/ yields the pattern itself
   d="$(basename "$(dirname "$f")")"
   name="$(awk 'NR>1 && /^---$/{exit} /^name: /{sub(/^name: */,""); print; exit}' "$f")"
   [ "$name" = "$d" ] || bad "$f: name '$name' != directory '$d'"
@@ -47,13 +50,28 @@ while IFS= read -r link; do bad "$link: symlink"; done < <(find "$dir" -type l)
 
 grep -q 'Copyright (c) 2026 Lauren Tan' "$dir/LICENSE" || bad "LICENSE: upstream notice missing"
 claude plugin validate "$dir" > /dev/null 2>&1 || bad "claude plugin validate $dir failed"
-# validate and test do not type-check (GitHub issue #99771), so tsc runs against the engine's own declarations:
-# /plugin-authoring writes them for the running version under the per-user temp folder (README, Refresh the mod types)
+# validate and test do not type-check (GitHub issue #99771), so tsc runs against the engine's own declarations.
+# /plugin-authoring writes them for the running version under the per-user temp folder, which macOS's tmp_cleaner
+# empties after 3 idle days, so a found copy is kept under ~/.cache/jstack too (README, Refresh the mod types)
 have=$(claude --version | cut -d' ' -f1)
-types=${JSTACK_CLAUDE_TYPES:-$(ls -t /tmp/claude-"$(id -u)"/bundled-skills/"$have"/*/plugin-authoring/types/claude-code.d.ts 2>/dev/null | head -1)}
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/jstack"
+resolve_types() {
+  if [ -n "${JSTACK_CLAUDE_TYPES:-}" ]; then echo "$JSTACK_CLAUDE_TYPES"; return; fi
+  local found
+  found=$(ls -t "${JSTACK_TYPES_TMP:-/tmp/claude-$(id -u)}"/bundled-skills/"$have"/*/plugin-authoring/types/claude-code.d.ts 2> /dev/null | head -1)
+  if [ -n "$found" ]; then
+    mkdir -p "$cache_dir" && cp "$found" "$cache_dir/claude-code-$have.d.ts"
+    echo "$found"; return
+  fi
+  if [ -f "$cache_dir/claude-code-$have.d.ts" ]; then echo "$cache_dir/claude-code-$have.d.ts"; return; fi
+  ls -t "$cache_dir"/claude-code-*.d.ts 2> /dev/null | head -1
+}
 tsdir=$(mktemp -d)
 trap 'rm -rf "$tsdir"' EXIT
-if [ ! -f "$types" ]; then
+types=$([ "$no_types" = true ] || resolve_types)
+if [ "$no_types" = true ]; then
+  :
+elif [ ! -f "$types" ]; then
   if [ -n "${JSTACK_CLAUDE_TYPES:-}" ]; then
     bad "JSTACK_CLAUDE_TYPES=$types: not found"
   else
@@ -62,6 +80,7 @@ if [ ! -f "$types" ]; then
 elif ! command -v tsc > /dev/null; then
   bad "tsc: not found (mise install npm:typescript)"
 else
+  echo "check-jstack: declarations from $types" >&2
   built=$(sed -n '1s/.*Claude Code \([0-9][0-9.]*[0-9]\).*/\1/p' "$types")
   [ "$built" = "$have" ] || echo "check-jstack: $types is from $built, claude is $have" >&2
   cat > "$tsdir/tsconfig.json" << JSON

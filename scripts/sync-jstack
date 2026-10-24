@@ -104,6 +104,8 @@ if [ "$apply_patches" = true ] && [ "${JSTACK_NO_CHECK:-}" != 1 ]; then
   # 20-runtime.patch rewrote worktree-audit.sh's transcript lookup
   bash "$root/jstack/tests/worktree-audit.sh" "$scripts/worktree-audit.sh" > /dev/null \
     || die "test: jstack/tests/worktree-audit.sh failed"
+  bash "$root/jstack/tests/check-jstack-types.sh" > /dev/null \
+    || die "test: jstack/tests/check-jstack-types.sh failed"
 fi
 
 rm -rf "$out" && mkdir -p "$(dirname "$out")" && mv "$stage" "$out"

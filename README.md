@@ -213,15 +213,27 @@ patch against the new table rather than editing hunks by hand.
 ### Refresh the mod types
 
 `check-jstack` type-checks the mod against the declarations Claude Code
-itself writes: `/plugin-authoring`, run once in a session, leaves
+itself writes. `/plugin-authoring`, run once in a session, leaves
 `claude-code.d.ts` for the installed version under
-`/tmp/claude-<uid>/bundled-skills/<version>/…/plugin-authoring/types/`, and the
-script takes the copy matching `claude --version` (`JSTACK_CLAUDE_TYPES=<file>`
-names another). After `claude update`, run `/plugin-authoring` again; until
-then the check fails with that instruction. The file is Anthropic's, not
-MIT: the engine's own publishing steps gitignore the copy it writes beside a
-mod, and `jstack/types/claude-code.d.ts` (a local copy, if you keep one) is
-ignored here for the same reason.
+`/tmp/claude-<uid>/bundled-skills/<version>/…/plugin-authoring/types/`. The
+script resolves the file in this order and says which it used
+(`check-jstack: declarations from <path>`):
+
+1. `JSTACK_CLAUDE_TYPES=<file>`, when set.
+2. The temp copy matching `claude --version`, copied to
+   `~/.cache/jstack/claude-code-<version>.d.ts` as it is found: macOS's
+   `tmp_cleaner` empties `/tmp` after 3 idle days.
+3. That cache entry for the running version.
+4. The newest cache entry of any version, with a one-line drift warning.
+
+After `claude update`, run `/plugin-authoring` again; until then the check
+runs against the last cached version and warns. A machine that never ran it
+fails with that instruction. `check-jstack --no-types <dir>` skips the
+type-check and the lookup but still validates and tests the mod (CI uses
+it). The file is Anthropic's, not MIT: the engine's own publishing steps
+gitignore the copy it writes beside a mod, and `jstack/types/claude-code.d.ts`
+(a local copy, if you keep one) is ignored here for the same reason.
+`jstack/tests/check-jstack-types.sh` covers the resolution order.
 
 ### Attribution and license
 
