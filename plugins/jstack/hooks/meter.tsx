@@ -72,7 +72,8 @@ async function hasCheckScript($: EngineInterface): Promise<boolean> {
 type MemoryConfig = { disabled?: boolean; daemonProfile?: string; embedVersion?: string; embedPackagePath?: string; apiPort?: number }
 async function readMemory($: EngineInterface, config: string): Promise<MemoryConfig | null> {
   try {
-    return JSON.parse(await $.fs.read(config)) as MemoryConfig
+    const c = JSON.parse(await $.fs.read(config)) as unknown
+    return c && typeof c === 'object' && !Array.isArray(c) ? (c as MemoryConfig) : null
   } catch {
     return null
   }
@@ -119,6 +120,7 @@ async function openMemory($: EngineInterface, config: string): Promise<void> {
       $.ui.toast('memory is off; `hindsight-memory on` first')
       return
     }
+    $.ui.toast('starting the memory dashboard…')
     const profile = c.daemonProfile || 'coding-agent'
     // The hook package's own rule for launching the embed (getEmbedCommand in its daemon starter)
     const embed = c.embedPackagePath ? ['uv', 'run', '--directory', c.embedPackagePath, 'hindsight-embed'] : ['uvx', `hindsight-embed@${c.embedVersion || 'latest'}`]
@@ -129,8 +131,8 @@ async function openMemory($: EngineInterface, config: string): Promise<void> {
       return
     }
     // The embed records the dashboard's port per profile next to its logs, but only when it did the start itself; its default is the daemon's port plus 10000
-    const recorded = await $.fs.read(`${await $.env.get('HOME')}/.hindsight/profiles/${profile}.ui.port`).catch(() => '')
-    await openTarget($, `http://localhost:${recorded.trim() || (c.apiPort ?? 9077) + 10000}`, 'memory dashboard')
+    const recorded = (await $.fs.read(`${await $.env.get('HOME')}/.hindsight/profiles/${profile}.ui.port`).catch(() => '')).trim()
+    await openTarget($, `http://localhost:${/^\d+$/.test(recorded) ? recorded : (c.apiPort ?? 9077) + 10000}`, 'memory dashboard')
   } catch (err) {
     $.ui.toast(`could not open the memory dashboard: ${err instanceof Error ? err.message : String(err)}`)
   } finally {
