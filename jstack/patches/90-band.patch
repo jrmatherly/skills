@@ -1,9 +1,9 @@
 diff --git a/hooks/meter.tsx b/hooks/meter.tsx
 new file mode 100644
-index 0000000..1aad643
+index 0000000..39e6937
 --- /dev/null
 +++ b/hooks/meter.tsx
-@@ -0,0 +1,313 @@
+@@ -0,0 +1,320 @@
 +import { atom, read, update } from 'claude-code'
 +import type { EngineInterface, On } from 'claude-code'
 +
@@ -110,15 +110,21 @@ index 0000000..1aad643
 +
 +const DEFAULT_PORT = 9077
 +// Daemon liveness for the Memory button, cached: the band draws on every turn, and a
-+// /health request per draw would be one per keystroke. Cleared when the button starts
-+// the daemon, so the label follows within one draw instead of a cache window
++// /health request per draw would be one per keystroke. A down answer is kept 5 s so
++// the label follows a daemon the button just started; one request at a time, and at
++// most a second, since the draw also carries the engine's own row and a daemon that
++// accepts but never answers must not hold both
 +let probed: { port: number; ok: boolean; at: number } | null = null
++let inflight: Promise<boolean> | null = null
 +async function daemonUp($: EngineInterface, port: number): Promise<boolean> {
 +  const now = Date.now()
-+  if (probed && probed.port === port && now - probed.at < 30_000) return probed.ok
-+  const ok = await $.http.fetch(`http://127.0.0.1:${port}/health`).then(r => r.ok, () => false)
-+  probed = { port, ok, at: now }
-+  return ok
++  if (probed && probed.port === port && now - probed.at < (probed.ok ? 30_000 : 5_000)) return probed.ok
++  inflight ??= Promise.race([$.http.fetch(`http://127.0.0.1:${port}/health`).then(r => r.ok, () => false), $.clock.sleep(1000).then(() => false)]).then(ok => {
++    probed = { port, ok, at: Date.now() }
++    inflight = null
++    return ok
++  })
++  return inflight
 +}
 +type MemoryState = 'on' | 'off' | 'down' | 'n/a'
 +// n/a is a config the band can't parse, so it tells an unreadable file from Hindsight not being
@@ -160,6 +166,7 @@ index 0000000..1aad643
 +    // The embed records the dashboard's port per profile next to its logs, but only when it did the start itself; its default is the daemon's port plus 10000
 +    const recorded = (await $.fs.read(`${await $.env.get('HOME')}/.hindsight/profiles/${profile}.ui.port`).catch(() => '')).trim()
 +    probed = null
++    $.ui.invalidate('ui.render')
 +    await openTarget($, `http://localhost:${/^\d+$/.test(recorded) ? recorded : (c.apiPort ?? DEFAULT_PORT) + 10000}`, 'memory dashboard')
 +  } catch (err) {
 +    $.ui.toast(`could not open the memory dashboard: ${err instanceof Error ? err.message : String(err)}`)
@@ -353,7 +360,7 @@ index 80335ea..a03f30f 100644
 +  registerMeter(on)
  }
 diff --git a/skills/j-mode/SKILL.md b/skills/j-mode/SKILL.md
-index f6500d3..d25feff 100644
+index f6500d3..f1e4e9c 100644
 --- a/skills/j-mode/SKILL.md
 +++ b/skills/j-mode/SKILL.md
 @@ -126,7 +126,7 @@ Comments follow the same rule as the reply. Write them clean as you go. Keep a c
@@ -361,16 +368,16 @@ index f6500d3..d25feff 100644
  ## Playbooks
  
 -Open a todolist whose first items are the matched playbook's steps, copied in verbatim, before any task-specific todos. A step you choose not to do stays in the list with a one-line `skip: <reason>`. Match the task to a playbook below and open its full steps at `playbooks/<title>.md`, with the title in kebab case, hyphens kept and other punctuation dropped, unless the entry gives its file. Copy its steps in verbatim. When the `mcp__jstack__step` tool is present and you are the main session, not a subagent, mirror the list into it. Call it with `op: "set"` (the playbook name and the step texts) as you open the todolist, then `done` or `skip` with the step number as you go, and `set` again after `/clear` or `/branch`, which empty the band. The todolist stays the record. The band is the operator's view.
-+Open a todolist whose first items are the matched playbook's steps, copied in verbatim, before any task-specific todos. A step you choose not to do stays in the list with a one-line `skip: <reason>`. Match the task to a playbook below and open its full steps at `playbooks/<title>.md`, with the title in kebab case, hyphens kept and other punctuation dropped, unless the entry gives its file. Copy its steps in verbatim. When the `mcp__jstack__step` tool is present and you are the main session, not a subagent, mirror the list into it. Call it with `op: "set"` (the playbook name and the step texts) as you open the todolist, then `done` or `skip` with the step number as you go, and `set` again after `/clear` or `/branch`, which empty the band. The todolist stays the record. The band is the operator's view. Below the step row the band also shows the context fill, a Level menu for Ponytail, an Actions menu (Simplify, Review, Remember, Board for Ponytail's task board, Check for `pnpm check`), a Memory button that shows Hindsight's state (on, off, down when the daemon isn't answering, n/a) and opens its dashboard, a More toggle for cost, tokens, turns, agent time and quota, and the running subagents, so don't restate those figures or explain the menus in the reply.
++Open a todolist whose first items are the matched playbook's steps, copied in verbatim, before any task-specific todos. A step you choose not to do stays in the list with a one-line `skip: <reason>`. Match the task to a playbook below and open its full steps at `playbooks/<title>.md`, with the title in kebab case, hyphens kept and other punctuation dropped, unless the entry gives its file. Copy its steps in verbatim. When the `mcp__jstack__step` tool is present and you are the main session, not a subagent, mirror the list into it. Call it with `op: "set"` (the playbook name and the step texts) as you open the todolist, then `done` or `skip` with the step number as you go, and `set` again after `/clear` or `/branch`, which empty the band. The todolist stays the record. The band is the operator's view. Below the step row the band also shows the context fill, a Level menu for Ponytail, an Actions menu (Simplify, Review, Remember, Board for Ponytail's task board, Check for `pnpm check`), a Memory button that shows Hindsight's state (on means the daemon answers, not that this repo is opted in; off; down when the daemon isn't answering; n/a) and opens its dashboard, a More toggle for cost, tokens, turns, agent time and quota, and the running subagents, so don't restate those figures or explain the menus in the reply.
  
  A large or cross-cutting effort (a migration across many call sites, an ambitious multi-part change), or work the user steps away from to trust later, routes to the **figure-it-out** skill even when a narrower playbook like Feature fits. Use **figure-it-out** whenever no bundled playbook fits. It designs a bespoke, rigorous playbook for the task. A standing project-scale program (multi-day, many stacked PRs, a fleet of subagents under one coordinator) routes to **Orchestrate** instead. figure-it-out designs one bespoke run, orchestrate runs the program.
  
 diff --git a/tests/meter-band.test.tsx b/tests/meter-band.test.tsx
 new file mode 100644
-index 0000000..1674843
+index 0000000..c21a8af
 --- /dev/null
 +++ b/tests/meter-band.test.tsx
-@@ -0,0 +1,395 @@
+@@ -0,0 +1,410 @@
 +import { expect, mock, test } from 'claude-code/testing'
 +import type { Engine } from 'claude-code/testing'
 +import type { On, RenderPropsOf, SessionUsage } from 'claude-code'
@@ -383,7 +390,7 @@ index 0000000..1674843
 +  rateLimits: [{ kind: 'five_hour', percentUsed: 12, resetsAt: '2026-10-22T15:40:00Z' }, { kind: 'seven_day', percentUsed: 60 }],
 +  cost: { usd: 0.42 },
 +}
-+type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean; board?: boolean; memory?: string; daemonDown?: boolean }
++type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean; board?: boolean; memory?: string; daemonDown?: boolean; daemonHangs?: boolean }
 +function world(on: On, w: World = {}) {
 +  const ran: unknown[] = []
 +  const toasts: string[] = []
@@ -414,9 +421,11 @@ index 0000000..1674843
 +  on('agent.spawn', () => ({ ...(spawned.shift() ?? { model: 'opus' }) }))
 +  on('turn.complete', () => ({ text: '' }))
 +  on('ui.toast', ($, e) => { toasts.push(e.text); return { value: undefined } })
-+  on('http.fetch', ($, e) => { fetched.push(e.url); return w.daemonDown ? ({ deny: 'refused' } as never) : { value: { status: 200, ok: true, headers: {}, text: '{}' } } })
++  const daemon = { down: w.daemonDown ?? false }
++  on('http.fetch', ($, e) => { fetched.push(e.url); if (w.daemonHangs) return new Promise<never>(() => {}); return daemon.down ? ({ deny: 'refused' } as never) : { value: { status: 200, ok: true, headers: {}, text: '{}' } } })
++  on('clock.sleep', () => ({ value: undefined }))
 +  on('ui.render', () => ({ type: 'Text', props: {}, children: ['below'] }))
-+  return { ran, toasts, saved, files, fetched }
++  return { ran, toasts, saved, files, fetched, daemon }
 +}
 +
 +const start = ($: Engine) => $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/home/u' })
@@ -589,13 +598,26 @@ index 0000000..1674843
 +  await mount($)
 +  expect(fetched.length).toBe(2)
 +})
-+test('Memory says down when the daemon does not answer, on the configured port', async ($, on) => {
-+  const { fetched } = world(on, { memory: '{"apiPort":9100}', daemonDown: true })
++test('Memory says down when the daemon does not answer, on the configured port, and relabels on the same band after a press brings it up', async ($, on) => {
++  const { fetched, daemon } = world(on, { memory: '{"apiPort":9100}', daemonDown: true })
++  on('process.run', () => ({ value: PASS }))
 +  await start($)
-+  const memory = await memoryButton(await mount($))
++  const ui = await mount($)
++  const memory = await memoryButton(ui)
 +  expect(memory?.text).toBe('Memory · down')
 +  expect(memory?.props.color).toBe('warning')
 +  expect(fetched).toEqual(['http://127.0.0.1:9100/health'])
++  daemon.down = false
++  await ui.press({ key: 'memory' })
++  expect((await memoryButton(ui))?.text).toBe('Memory · on')
++  expect(fetched.length).toBe(2)
++})
++test('a probe that never answers still draws the band, as down', async ($, on) => {
++  world(on, { memory: MEMORY, daemonHangs: true })
++  await start($)
++  const ui = await mount($)
++  expect((await memoryButton(ui))?.text).toBe('Memory · down')
++  expect((await ui.find({ key: 'details' }))?.props.label).toBe('More')
 +})
 +test('Memory follows the config at click time: a local embed checkout and profile, the default port when none is recorded, and the kill switch', async ($, on) => {
 +  const { toasts, files } = world(on, { memory: '{"embedPackagePath":"/src/embed","daemonProfile":"lab","apiPort":9100}', details: true })

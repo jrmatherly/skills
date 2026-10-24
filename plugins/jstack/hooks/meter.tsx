@@ -104,15 +104,21 @@ async function openTarget($: EngineInterface, target: string, what: string): Pro
 
 const DEFAULT_PORT = 9077
 // Daemon liveness for the Memory button, cached: the band draws on every turn, and a
-// /health request per draw would be one per keystroke. Cleared when the button starts
-// the daemon, so the label follows within one draw instead of a cache window
+// /health request per draw would be one per keystroke. A down answer is kept 5 s so
+// the label follows a daemon the button just started; one request at a time, and at
+// most a second, since the draw also carries the engine's own row and a daemon that
+// accepts but never answers must not hold both
 let probed: { port: number; ok: boolean; at: number } | null = null
+let inflight: Promise<boolean> | null = null
 async function daemonUp($: EngineInterface, port: number): Promise<boolean> {
   const now = Date.now()
-  if (probed && probed.port === port && now - probed.at < 30_000) return probed.ok
-  const ok = await $.http.fetch(`http://127.0.0.1:${port}/health`).then(r => r.ok, () => false)
-  probed = { port, ok, at: now }
-  return ok
+  if (probed && probed.port === port && now - probed.at < (probed.ok ? 30_000 : 5_000)) return probed.ok
+  inflight ??= Promise.race([$.http.fetch(`http://127.0.0.1:${port}/health`).then(r => r.ok, () => false), $.clock.sleep(1000).then(() => false)]).then(ok => {
+    probed = { port, ok, at: Date.now() }
+    inflight = null
+    return ok
+  })
+  return inflight
 }
 type MemoryState = 'on' | 'off' | 'down' | 'n/a'
 // n/a is a config the band can't parse, so it tells an unreadable file from Hindsight not being
@@ -154,6 +160,7 @@ async function openMemory($: EngineInterface, config: string): Promise<void> {
     // The embed records the dashboard's port per profile next to its logs, but only when it did the start itself; its default is the daemon's port plus 10000
     const recorded = (await $.fs.read(`${await $.env.get('HOME')}/.hindsight/profiles/${profile}.ui.port`).catch(() => '')).trim()
     probed = null
+    $.ui.invalidate('ui.render')
     await openTarget($, `http://localhost:${/^\d+$/.test(recorded) ? recorded : (c.apiPort ?? DEFAULT_PORT) + 10000}`, 'memory dashboard')
   } catch (err) {
     $.ui.toast(`could not open the memory dashboard: ${err instanceof Error ? err.message : String(err)}`)

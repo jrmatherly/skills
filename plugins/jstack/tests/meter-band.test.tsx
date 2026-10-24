@@ -10,7 +10,7 @@ const USAGE: SessionUsage = {
   rateLimits: [{ kind: 'five_hour', percentUsed: 12, resetsAt: '2026-10-22T15:40:00Z' }, { kind: 'seven_day', percentUsed: 60 }],
   cost: { usd: 0.42 },
 }
-type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean; board?: boolean; memory?: string; daemonDown?: boolean }
+type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean; board?: boolean; memory?: string; daemonDown?: boolean; daemonHangs?: boolean }
 function world(on: On, w: World = {}) {
   const ran: unknown[] = []
   const toasts: string[] = []
@@ -41,9 +41,11 @@ function world(on: On, w: World = {}) {
   on('agent.spawn', () => ({ ...(spawned.shift() ?? { model: 'opus' }) }))
   on('turn.complete', () => ({ text: '' }))
   on('ui.toast', ($, e) => { toasts.push(e.text); return { value: undefined } })
-  on('http.fetch', ($, e) => { fetched.push(e.url); return w.daemonDown ? ({ deny: 'refused' } as never) : { value: { status: 200, ok: true, headers: {}, text: '{}' } } })
+  const daemon = { down: w.daemonDown ?? false }
+  on('http.fetch', ($, e) => { fetched.push(e.url); if (w.daemonHangs) return new Promise<never>(() => {}); return daemon.down ? ({ deny: 'refused' } as never) : { value: { status: 200, ok: true, headers: {}, text: '{}' } } })
+  on('clock.sleep', () => ({ value: undefined }))
   on('ui.render', () => ({ type: 'Text', props: {}, children: ['below'] }))
-  return { ran, toasts, saved, files, fetched }
+  return { ran, toasts, saved, files, fetched, daemon }
 }
 
 const start = ($: Engine) => $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/home/u' })
@@ -216,13 +218,26 @@ test('the daemon probe is cached across draws and cleared when the button starts
   await mount($)
   expect(fetched.length).toBe(2)
 })
-test('Memory says down when the daemon does not answer, on the configured port', async ($, on) => {
-  const { fetched } = world(on, { memory: '{"apiPort":9100}', daemonDown: true })
+test('Memory says down when the daemon does not answer, on the configured port, and relabels on the same band after a press brings it up', async ($, on) => {
+  const { fetched, daemon } = world(on, { memory: '{"apiPort":9100}', daemonDown: true })
+  on('process.run', () => ({ value: PASS }))
   await start($)
-  const memory = await memoryButton(await mount($))
+  const ui = await mount($)
+  const memory = await memoryButton(ui)
   expect(memory?.text).toBe('Memory · down')
   expect(memory?.props.color).toBe('warning')
   expect(fetched).toEqual(['http://127.0.0.1:9100/health'])
+  daemon.down = false
+  await ui.press({ key: 'memory' })
+  expect((await memoryButton(ui))?.text).toBe('Memory · on')
+  expect(fetched.length).toBe(2)
+})
+test('a probe that never answers still draws the band, as down', async ($, on) => {
+  world(on, { memory: MEMORY, daemonHangs: true })
+  await start($)
+  const ui = await mount($)
+  expect((await memoryButton(ui))?.text).toBe('Memory · down')
+  expect((await ui.find({ key: 'details' }))?.props.label).toBe('More')
 })
 test('Memory follows the config at click time: a local embed checkout and profile, the default port when none is recorded, and the kill switch', async ($, on) => {
   const { toasts, files } = world(on, { memory: '{"embedPackagePath":"/src/embed","daemonProfile":"lab","apiPort":9100}', details: true })
