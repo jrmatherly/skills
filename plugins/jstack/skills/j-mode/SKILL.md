@@ -1,7 +1,6 @@
 ---
 name: j-mode
 description: Jason's agent style for concise, detailed responses, deliberate subagents, unslopped prose, simple code, and verified work. Use for /j-mode or requests to work in this style.
-disable-model-invocation: true
 ---
 
 # J mode
@@ -41,7 +40,7 @@ Remaining triggers:
 
 Read the leaf skill in full for any principle you apply. Each entry names when it applies. Each leaf is the **principle-<title>** skill, with the title in kebab case, hyphens kept and other punctuation dropped, unless the entry gives its name.
 
-jstack's skills are not on the Skill tool (they set `disable-model-invocation`), so a skill named in this file is read, not invoked: `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`. The user can also run one as `/jstack:<name>`.
+jstack's other skills are not on the Skill tool (they set `disable-model-invocation`), so a skill named in this file is read, not invoked: `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`. The user can also run one as `/jstack:<name>`. Only `j-mode` itself is on the Skill tool, so a session or subagent told to work in J mode invokes `/jstack:j-mode` instead of reading this file.
 
 **Core**
 
