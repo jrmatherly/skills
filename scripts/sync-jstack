@@ -57,7 +57,7 @@ rm -rf "$stage/skills/poteto-help" "$stage/skills/ketchup-video" "$stage/skills/
 # Whole-word literal substitutions, in file order: where a term starts or
 # ends with a letter or digit, a match touching another one there is left
 # alone ("Upstack" must not become "Ujstack"). Text files only: bun.lock is
-# regenerated below, LICENSE keeps the upstream notice.
+# kept as upstream ships it (bun only confirms it below), LICENSE keeps the upstream notice.
 while IFS=$'\t' read -r from to; do
   if [ -z "$from" ] || [ "${from:0:1}" = "#" ]; then continue; fi
   { grep -rlF --exclude=bun.lock --exclude=LICENSE -- "$from" "$stage" || true; } \
