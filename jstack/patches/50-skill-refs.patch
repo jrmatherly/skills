@@ -25,7 +25,7 @@ index 8fd3244..0398a65 100644
  
  ## Start
 diff --git a/skills/arena/SKILL.md b/skills/arena/SKILL.md
-index 76eb47a..154ff4f 100644
+index 4014ff7..2b10137 100644
 --- a/skills/arena/SKILL.md
 +++ b/skills/arena/SKILL.md
 @@ -6,6 +6,8 @@ disable-model-invocation: true
@@ -51,7 +51,7 @@ index 7677563..7f03276 100644
  
  Every spawn is an Agent subagent with `subagent_type: general-purpose`, briefed as read-only: it explores and explains, and edits nothing. Explorers use the `how explorer` line in the `jstack-models.md` rule (default `haiku medium`), and every explainer uses the `how explainer` line (default `opus medium`). Set `model` and `effort` to that line's value, or to the default if the rule or the line is missing. Leave `model` and `effort` unset when the value is `inherit`. A `codex` value runs that seat through Codex instead of a subagent (see the **setup-jstack** skill, "Codex seats"); if `command -v codex` fails, use the default and say so. If the Agent tool rejects a value, use the default and say so. Pick each subagent's reasoning level (`effort`) for the job, per the Subagents section of the **j-mode** skill.
 diff --git a/skills/interrogate/SKILL.md b/skills/interrogate/SKILL.md
-index 513480f..44f56f0 100644
+index dbff38e..85673a0 100644
 --- a/skills/interrogate/SKILL.md
 +++ b/skills/interrogate/SKILL.md
 @@ -6,6 +6,8 @@ disable-model-invocation: true
@@ -60,9 +60,9 @@ index 513480f..44f56f0 100644
  
 +jstack's skills are read, not invoked (they set `disable-model-invocation`): a skill named here lives at `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`.
 +
- Spawn one reviewer per configured model to adversarially review code changes. The adversarial signal comes from model diversity, not assigned personas. The deliverable is a synthesized verdict. Do NOT auto-apply changes.
+ Adversaries try to break a change or a design. A finding survives only when a run proves it. Report the findings. Do not apply fixes.
  
- ## Step 1, Scope
+ ## Frame
 diff --git a/skills/reflect/SKILL.md b/skills/reflect/SKILL.md
 index de50f67..7977ae0 100644
 --- a/skills/reflect/SKILL.md

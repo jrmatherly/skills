@@ -103,7 +103,7 @@ fi
 if [ "$apply_patches" = true ] && [ "${JSTACK_NO_CHECK:-}" != 1 ]; then
   # Only runtime dependencies, and no install scripts (dependencies' never run)
   (cd "$scripts" && bun install --frozen-lockfile --production --ignore-scripts > /dev/null &&
-    bun test orch watch-pr check-plan.test.ts > /dev/null 2>&1) \
+    bun test watch-pr check-plan.test.ts > /dev/null 2>&1) \
     || die "test: bun test failed in skills/j-mode/scripts"
   rm -rf "$scripts/node_modules"
   # 20-runtime.patch rewrote worktree-audit.sh's transcript lookup

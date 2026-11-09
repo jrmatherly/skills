@@ -13,7 +13,7 @@ An Agent call takes `model` (`opus`, `sonnet`, `haiku`, `fable`, or a full model
 
 ### Codex seats
 
-A `codex` entry in a reviewer or judge list runs that seat through Codex instead of an Agent call: write the seat's filled-in prompt to a temp file and run `codex exec -s read-only - < "$file"` (stdin, never a quoted argument: the prompt contains the code under review, and the shell would expand any `$(…)` or backtick in it), so the panel gets a reviewer from another model family. Treat its output like any other seat's. Offer `codex` only when `command -v codex` succeeds, and only in read-only roles (`interrogate reviewers`, `arena cross-judge pool`, `reflect tooling`); runner and worker roles write code and stay on Agent models.
+A `codex` entry in a reviewer or judge list runs that seat through Codex instead of an Agent call: write the seat's filled-in prompt to a temp file and run `codex exec -s read-only - < "$file"` (stdin, never a quoted argument: the prompt contains the code under review, and the shell would expand any `$(…)` or backtick in it), so the panel gets a reviewer from another model family. Treat its output like any other seat's. Offer `codex` only when `command -v codex` succeeds, and only in read-only roles (`arena cross-judge pool`, `reflect tooling`). Runner, worker, and interrogate adversary roles write code or run repros, so they stay on Agent models.
 
 ## Steps
 
@@ -36,7 +36,7 @@ Start from the step 5 table. The budget sets the effort token of every real mode
 
 ### 4. Show the roles and confirm
 
-Show every role with its value. Ask (AskUserQuestion) whether to accept or change specific roles, offering `opus`, `sonnet`, `haiku`, `fable`, `inherit`, and `codex` where allowed, each real model paired with an effort and the budget's effort preselected. Panel roles (`arena runners`, `architect runners`, `interrogate reviewers`) are lists: one seat per entry, so the list length sets the count. `arena cross-judge pool` is a list Arena picks one entry from, preferring one whose family differs from the parent's. `swarm workers` is every worker's model unless a race assigns one per arm.
+Show every role with its value. Ask (AskUserQuestion) whether to accept or change specific roles, offering `opus`, `sonnet`, `haiku`, `fable`, `inherit`, and `codex` where allowed, each real model paired with an effort and the budget's effort preselected. Panel roles (`arena runners`, `architect runners`, `interrogate reviewers`) are lists: one seat per entry, so the list length sets the count. `arena cross-judge pool` is a list Arena runs one judge from. It tries only entries whose model differs from the parent's (by name, `opus` against `fable`, not by vendor), in list order, so order it by preference. An `inherit` entry never judges. `swarm workers` is every worker's model unless a race assigns one per arm.
 
 ### 5. Write the rule
 

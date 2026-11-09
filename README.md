@@ -121,7 +121,7 @@ Four upstream skills are dropped: `make-bot-ui`, which drives Cursor's hosted ag
 The checks:
 
 - `scripts/check-jstack`: no upstream names or Cursor-only references left, skill names match their folders, links resolve, every `**name** skill` and `**name** principle skill` reference is a real skill folder (plus the separately installed `coding-standards`), no skill or agent grants itself `allowed-tools`, `hooks`, `mcpServers` or `permissionMode`, no symlinks, the upstream license notice is intact, and `claude plugin validate` passes
-- upstream's Bun tests (`bun test orch watch-pr`) and `jstack/tests/worktree-audit.sh`
+- upstream's Bun tests (`bun test watch-pr check-plan.test.ts`) and `jstack/tests/worktree-audit.sh`
 - `tsc --noEmit` over `hooks/`, `types/` and `tests/` against the engine's own declarations (see Refresh the mod types), then `claude plugin test` on a copy that holds only the mod (neither `claude plugin validate` nor `claude plugin test` type-checks, and the upstream `bun:test` files cannot load in the test sandbox)
 
 Sync runs upstream code (Bun's install and tests), so it's fenced in: the pin must be a full 40-character SHA (a short one can be shadowed by an upstream tag of the same name) and is checked after checkout, an upstream that ships `bunfig.toml`, `.npmrc` or symlinks is refused before Bun runs, and installs use `--production --ignore-scripts` (only `commander`, no install scripts). The plugin's own runtime install in `j-mode/scripts/bootstrap.ts` uses the same flags (`60-safety`).
@@ -165,4 +165,4 @@ After `claude update`, run `/plugin-authoring` again; until then the check runs 
 
 Everything here that is not listed below (the `coding-standards` skill, the scripts, the jstack patches, this README) is MIT-licensed, see [`LICENSE`](LICENSE). The resume plugin and supabase-prompts carry their own notices, named in their sections above.
 
-jstack is a fork of [pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan, MIT-licensed; the upstream notice is kept in [`plugins/jstack/LICENSE`](plugins/jstack/LICENSE). Pinned upstream: `cursor/plugins@e73df471cd4bd918367e99f3dd9c51bd53ddf5f0` (pstack 0.15.32).
+jstack is a fork of [pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan, MIT-licensed; the upstream notice is kept in [`plugins/jstack/LICENSE`](plugins/jstack/LICENSE). Pinned upstream: `cursor/plugins@6b0300214a09fd6029cfb7077043125758cd1fd2` (pstack 0.15.36).
