@@ -182,7 +182,7 @@ index f0b53df..6cf3c44 100644
  
  **Reply:** the plan path, the PR ids with their dependencies and the review-gated set, what the prototypes proved and what stays unproven, and the check script's output.
 diff --git a/skills/j-mode/playbooks/orchestrate.md b/skills/j-mode/playbooks/orchestrate.md
-index b6e5f56..ac199e7 100644
+index b6e5f56..078228f 100644
 --- a/skills/j-mode/playbooks/orchestrate.md
 +++ b/skills/j-mode/playbooks/orchestrate.md
 @@ -2,15 +2,15 @@
@@ -200,8 +200,8 @@ index b6e5f56..ac199e7 100644
  - **A sub-coordinator only when one area has many parallel workers.** It owns that area's workers and kickoffs and sends you one rollup, never raw worker reports. Stop at three levels: you, sub-coordinators, and workers. Keep about ten workers in flight per coordinator, and start the next one as each finishes instead of waiting on a whole batch.
 -- **Fork when new work needs a worker's built state,** such as its checkout, uncommitted changes, or a running process. Message a worker only for a follow-up on the same work. Never message one to check on it, because a message restarts an idle agent.
 -- **Each PR gets a verifier that isn't its author,** on a different model family. The owner merges only on that verifier's pass at the current head.
-+- **Resume a worker only when new work needs its built state,** such as its checkout, uncommitted changes, or a running process. Message a worker only for a follow-up on the same work. Never message one to check on it, because a message restarts an idle agent.
-+- **Each PR gets a verifier that isn't its author,** on a different model. The owner merges only on that verifier's pass at the current head.
++- **Resume a worker only when new work needs its built state,** such as its checkout, uncommitted changes, or a running process. Message a worker only when the follow-up needs that state. Never message one to check on it, because a message restarts an idle agent.
++- **Each PR gets a verifier that isn't its author.** It runs on the `swarm workers` line per the Subagents section. When that is the author's model, pick another configured model and say so. The owner merges only on that verifier's pass at the current head.
  - **Start with one unit.** Take it through kickoff, owner, verifier, and merge before you fan out, so a flaw in the kickoff costs one agent instead of fifty. On near-identical cheap units, the first unit is that test.
  
  #### Supervision
