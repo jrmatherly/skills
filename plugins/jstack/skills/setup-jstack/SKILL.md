@@ -32,7 +32,7 @@ Use AskUserQuestion with these labels, naming the current budget when the rule r
 
 ### 3. Apply it
 
-Start from the step 5 table. The budget sets the effort token of every real model value, panel entries included, to `max`, `xhigh`, `high`, or `medium`; `inherit` and `codex` do not change. On a re-run, keep any role the user changed by hand. Add `codex` to the read-only lists in step 5 only if `command -v codex` succeeds.
+Start from the step 5 table. The budget sets the effort token of every real model value, panel entries included, to `max`, `xhigh`, `high`, or `medium`; `inherit` and `codex` do not change. On a re-run, keep any role the user changed by hand. Add `codex` to the read-only lists in step 5 only if `command -v codex` succeeds. Drop a `codex` entry from any other role and say so.
 
 ### 4. Show the roles and confirm
 
