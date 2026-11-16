@@ -1,0 +1,98 @@
+#!/bin/bash
+# Rebase jstack/patches onto a new upstream pin. Each patch becomes a commit
+# on the tree the old pin produces, the commits are rebased onto the tree the
+# new pin produces, and the result is written back as jstack/patches/*.patch.
+# Word-level merges settle most conflicts (jstack/wordmerge.py); the rest stop
+# the run for a hand.
+#
+# usage: rebase-jstack-patches <old-commit>   jstack/upstream already holds the new pin
+#        rebase-jstack-patches --continue     after resolving what it stopped on
+#        rebase-jstack-patches --abort
+set -euo pipefail
+
+root="$(cd "$(dirname "$0")/.." && pwd -P)"
+work="${JSTACK_REBASE_DIR:-${TMPDIR:-/tmp}/jstack-rebase}"
+repo="$work/tree"
+
+die() { echo "rebase-jstack-patches: $*" >&2; exit 1; }
+# The user's identity, signing and diff settings must not shape the patches
+g() {
+  git -C "$repo" -c user.name=jstack -c user.email=jstack@localhost \
+    -c commit.gpgsign=false -c core.editor=true "$@"
+}
+
+start() {
+  local old=$1 p
+  [[ $old =~ ^[0-9a-f]{40}$ ]] || die "the old commit must be a full 40-character SHA"
+  [ ! -e "$work" ] || die "$work exists: finish with --continue or drop it with --abort"
+  command -v python3 > /dev/null || die "python3: not found"
+  mkdir -p "$work"
+  JSTACK_COMMIT=$old JSTACK_NO_CHECK=1 "$root/scripts/sync-jstack" --no-patches --out "$repo" > /dev/null
+  JSTACK_NO_CHECK=1 "$root/scripts/sync-jstack" --no-patches --out "$work/new" > /dev/null
+
+  git -C "$repo" init -q -b patches
+  g config merge.conflictStyle diff3
+  g add -A && g commit -qm old-base && g branch old-base
+  for p in "$root"/jstack/patches/*.patch; do
+    g apply --whitespace=nowarn "$p" \
+      || die "${p##*/} does not apply to $old: is that the pin these patches were made for?"
+    g add -A && g commit -qm "${p##*/}"
+  done
+  g switch -q -c new-base old-base
+  g rm -rq . && cp -R "$work/new/." "$repo/"
+  g add -A && g commit -q --allow-empty -m new-base
+  g switch -q patches
+  g rebase -q --onto new-base old-base > /dev/null 2>&1 || true
+  advance
+}
+
+advance() {
+  local unmerged left odd
+  while [ -d "$repo/.git/rebase-merge" ]; do
+    unmerged=$(g diff --name-only --diff-filter=U)
+    if [ -n "$unmerged" ]; then
+      # shellcheck disable=SC2086
+      (cd "$repo" && python3 "$root/jstack/wordmerge.py" $unmerged > /dev/null) || true
+      # shellcheck disable=SC2086
+      left=$(cd "$repo" && grep -lE '^(<<<<<<<|>>>>>>>) ' $unmerged 2> /dev/null || true)
+      # A file one side deleted has no markers but still needs a decision
+      odd=$(g status --short | grep -E '^(DU|UD|AU|UA|DD|AA) ' || true)
+      if [ -n "$left$odd" ]; then
+        echo "stopped at $(g log -1 --format=%s REBASE_HEAD), in $repo:"
+        printf '%s\n' $left "$odd" | sed '/^$/d; s/^/  /'
+        echo "Resolve these there, then run: scripts/rebase-jstack-patches --continue"
+        echo "git checkout --ours/--theirs replaces the whole file, not the hunk."
+        echo "WORDMERGE_FAVOR=theirs jstack/wordmerge.py FILE lets the patch win same-word clashes."
+        exit 1
+      fi
+    fi
+    g add -A
+    if ! g rebase --continue > /dev/null 2>&1 && [ -z "$(g diff --name-only --diff-filter=U)" ]; then
+      # Nothing left of this patch on the new base
+      g rebase --skip > /dev/null 2>&1 || die "git rebase is stuck in $repo: finish it there, then --continue"
+    fi
+  done
+  write_back
+}
+
+write_back() {
+  local c name kept=" "
+  for c in $(g rev-list --reverse new-base..patches); do
+    name=$(g log -1 --format=%s "$c")
+    g -c diff.noprefix=false -c diff.mnemonicPrefix=false \
+      diff --no-color --no-ext-diff --no-renames "$c^" "$c" > "$root/jstack/patches/$name"
+    kept+="$name "
+  done
+  for c in "$root"/jstack/patches/*.patch; do
+    [[ $kept == *" ${c##*/} "* ]] || echo "${c##*/} came out empty on the new pin: delete it if upstream made it redundant"
+  done
+  rm -rf "$work"
+  echo "rebase-jstack-patches: patches written. Next: scripts/sync-jstack, then review git diff."
+}
+
+case ${1:-} in
+  --continue) [ -d "$repo/.git" ] || die "nothing in progress in $work"; advance ;;
+  --abort) rm -rf "$work" ;;
+  "" | -*) echo "usage: rebase-jstack-patches <old-commit> | --continue | --abort" >&2; exit 2 ;;
+  *) start "$1" ;;
+esac

@@ -25,6 +25,8 @@ command -v bun > /dev/null || die "bun: not found (mise install bun)"
 repo=$(sed -n 's/^repo=//p' "$root/jstack/upstream")
 path=$(sed -n 's/^path=//p' "$root/jstack/upstream")
 commit=$(sed -n 's/^commit=//p' "$root/jstack/upstream")
+# rebase-jstack-patches builds the previous pin's tree this way
+commit=${JSTACK_COMMIT:-$commit}
 [[ $commit =~ ^[0-9a-f]{40}$ ]] || die "fetch: commit in jstack/upstream must be a full 40-character SHA"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
@@ -96,7 +98,7 @@ JSON
 
 scripts="$stage/skills/j-mode/scripts"
 (cd "$scripts" && bun install --lockfile-only --ignore-scripts > /dev/null) || die "relock: bun install --lockfile-only failed"
-# JSTACK_NO_CHECK=1: patch-authoring escape hatch (README, "Patch workflow")
+# JSTACK_NO_CHECK=1: patch-authoring escape hatch (README, "Change or refresh a patch")
 if [ "${JSTACK_NO_CHECK:-}" != 1 ]; then
   "$root/scripts/check-jstack" "$stage" || die "check: see above"
 fi
