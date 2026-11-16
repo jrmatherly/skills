@@ -149,7 +149,7 @@ Each live lane runs in its own worktree at the PR head. Drive through the `chrom
 
 ## Appendix D. Links and reading list
 
-<Docs to read before editing. Which PRs get `<jstack>/skills/how/SKILL.md` and `<jstack>/skills/interrogate/SKILL.md`. The trail per `<jstack>/skills/show-me-your-work/SKILL.md`.>
+<Docs to read before editing. Which PRs get `<jstack>/skills/interrogate/SKILL.md`. The trail per `<jstack>/skills/show-me-your-work/SKILL.md`.>
 ````
 
 **Reply:** the plan path, the PR ids with their dependencies and the review-gated set, what the prototypes proved and what stays unproven, and the check script's output.

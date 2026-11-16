@@ -165,4 +165,4 @@ After `claude update`, run `/plugin-authoring` again; until then the check runs 
 
 Everything here that is not listed below (the `coding-standards` skill, the scripts, the jstack patches, this README) is MIT-licensed, see [`LICENSE`](LICENSE). The resume plugin and supabase-prompts carry their own notices, named in their sections above.
 
-jstack is a fork of [pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan, MIT-licensed; the upstream notice is kept in [`plugins/jstack/LICENSE`](plugins/jstack/LICENSE). Pinned upstream: `cursor/plugins@6b0300214a09fd6029cfb7077043125758cd1fd2` (pstack 0.15.36).
+jstack is a fork of [pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan, MIT-licensed; the upstream notice is kept in [`plugins/jstack/LICENSE`](plugins/jstack/LICENSE). Pinned upstream: `cursor/plugins@bf0c7cd80abdbf7fe47b634978a7d1b4071f71a7` (pstack 0.15.42).

@@ -186,7 +186,7 @@ index 0000000..80335ea
 +  }).catch(($, e, next) => next(e))
 +}
 diff --git a/skills/j-mode/SKILL.md b/skills/j-mode/SKILL.md
-index 39b05f3..299d1dc 100644
+index b05ee0c..a07fcf2 100644
 --- a/skills/j-mode/SKILL.md
 +++ b/skills/j-mode/SKILL.md
 @@ -126,7 +126,7 @@ Comments follow the same rule as the reply. Write them clean as you go. Keep a c
