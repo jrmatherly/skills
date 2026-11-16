@@ -1,0 +1,142 @@
+#!/bin/bash
+# Rebase jstack/patches onto a new upstream pin. Each patch becomes a commit
+# on the tree the old pin produces, the commits are rebased onto the tree the
+# new pin produces, and the result is written back as jstack/patches/*.patch.
+# Word-level merges settle most conflicts (jstack/wordmerge.py); the rest stop
+# the run for a hand.
+#
+# usage: rebase-jstack-patches <old-commit>   jstack/upstream already holds the new pin
+#        rebase-jstack-patches --continue     after resolving what it stopped on
+#        rebase-jstack-patches --abort
+set -euo pipefail
+
+root="$(cd "$(dirname "$0")/.." && pwd -P)"
+work="${JSTACK_REBASE_DIR:-${TMPDIR:-/tmp}/jstack-rebase}"
+repo="$work/tree"
+log="$work/git.log"
+markers='^(<<<<<<<|\|\|\|\|\|\|\||>>>>>>>)( |$)'
+
+die() { echo "rebase-jstack-patches: $*" >&2; exit 1; }
+# No user or system git config: identity, signing, hooks, rerere, the rebase
+# backend, the global ignore file and diff settings must not shape the patches
+g() {
+  GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 git -C "$repo" \
+    -c user.name=jstack -c user.email=jstack@localhost -c core.editor=true \
+    -c merge.conflictStyle=diff3 "$@"
+}
+# -f: the tree's own .gitignore (80-mod adds one) must not hide a patched file
+snapshot() {
+  g add -A -f
+  g commit -q --allow-empty -m "$1"
+}
+
+start() {
+  local old=$1 p
+  [[ $old =~ ^[0-9a-f]{40}$ ]] || die "the old commit must be a full 40-character SHA"
+  [ ! -e "$work" ] || die "$work exists: finish with --continue or drop it with --abort"
+  command -v python3 > /dev/null || die "python3: not found"
+  mkdir -p "$work"
+  # A start that fails leaves nothing behind for --continue to mistake for a rebase
+  trap 'rm -rf "$work"' EXIT
+  JSTACK_COMMIT=$old JSTACK_NO_CHECK=1 "$root/scripts/sync-jstack" --no-patches --out "$repo" > /dev/null
+  env -u JSTACK_COMMIT JSTACK_NO_CHECK=1 "$root/scripts/sync-jstack" --no-patches --out "$work/new" > /dev/null
+
+  g init -q -b patches
+  snapshot old-base
+  g branch old-base
+  for p in "$root"/jstack/patches/*.patch; do
+    g apply --whitespace=nowarn "$p" \
+      || die "${p##*/} does not apply to $old: is that the pin these patches were made for?"
+    snapshot "${p##*/}"
+  done
+  g switch -q -c new-base old-base
+  g rm -rq .
+  cp -R "$work/new/." "$repo/"
+  snapshot new-base
+  g switch -q patches
+  trap - EXIT
+  # A conflict exits non-zero and leaves .git/rebase-merge, which advance()
+  # works through. A rebase that never ran is refused by write_back().
+  g rebase --merge --onto new-base old-base > "$log" 2>&1 || true
+  advance
+}
+
+# Files of the patch being replayed that still hold conflict markers: the
+# unmerged ones, and any a hand staged half-resolved
+marked() {
+  { g diff -z --name-only --diff-filter=U; g diff -z --cached --name-only --diff-filter=d; } \
+    | (cd "$repo" && xargs -0 grep -lE "$markers" 2> /dev/null) | sort -u || true
+}
+
+advance() {
+  local left odd merged
+  while [ -d "$repo/.git/rebase-merge" ]; do
+    merged=$(g diff -z --name-only --diff-filter=U \
+      | (cd "$repo" && xargs -0 python3 "$root/jstack/wordmerge.py" 2>&1) | grep ': 0 conflict' || true)
+    if [ -n "$merged" ]; then
+      echo "word-merged in $(g log -1 --format=%s REBASE_HEAD), reread these paragraphs in the final diff:"
+      echo "${merged//: 0 conflict(s) left/}" | sed 's/^/  /'
+    fi
+    left=$(marked)
+    # A file one side deleted has no markers but still needs a decision
+    odd=$(g status --short | grep -E '^(DU|UD|AU|UA|DD|AA) ' || true)
+    if [ -n "$left$odd" ]; then
+      echo "stopped at $(g log -1 --format=%s REBASE_HEAD), in $repo:"
+      printf '%s\n' "$left" "$odd" | sed '/^$/d; s/^/  /'
+      echo "Resolve these there, then run: scripts/rebase-jstack-patches --continue"
+      echo "A file one side deleted needs git rm or git add there."
+      echo "git checkout --ours/--theirs replaces the whole file, not the hunk."
+      echo "To let the patch win same-word clashes in FILE:"
+      echo "  (cd $repo && WORDMERGE_FAVOR=theirs $root/jstack/wordmerge.py FILE)"
+      exit 1
+    fi
+    g add -A -f
+    g rebase --continue > "$log" 2>&1 || [ -n "$(g diff --name-only --diff-filter=U)" ] \
+      || die "git rebase --continue failed in $repo (a patch you resolved to nothing needs git rebase --skip there):
+$(cat "$log")"
+  done
+  write_back
+}
+
+write_back() {
+  local c name kept=" " out
+  { [ "$(g symbolic-ref -q --short HEAD)" = patches ] && g merge-base --is-ancestor new-base patches; } \
+    || die "the rebase in $repo did not finish (aborted, or never started?): --abort and start again
+$(cat "$log" 2> /dev/null)"
+  out=$(mktemp -d)
+  for c in $(g rev-list --reverse new-base..patches); do
+    name=$(g log -1 --format=%s "$c")
+    [[ $name == *.patch && $name != */* ]] || die "commit $c in $repo is not one of the patches: '$name'"
+    g diff --no-color --no-ext-diff --no-renames "$c^" "$c" > "$out/$name"
+    if grep -qE "^[+ ]${markers#^}" "$out/$name"; then die "$name still holds conflict markers: fix them in $repo"; fi
+    kept+="$name "
+  done
+  # Only now, with every patch built, replace the files
+  for c in "$out"/*.patch; do
+    [ -e "$c" ] || die "no patch survived the rebase in $repo"
+    mv "$c" "$root/jstack/patches/"
+  done
+  rm -rf "$out"
+  for c in "$root"/jstack/patches/*.patch; do
+    [[ $kept == *" ${c##*/} "* ]] \
+      || echo "${c##*/} came out empty on the new pin. scripts/sync-jstack fails on it until you delete it, if upstream made it redundant, or rework it."
+  done
+  rm -rf "$work"
+  echo "rebase-jstack-patches: patches written. Next: scripts/sync-jstack, then review git diff."
+}
+
+case ${1:-} in
+  --continue)
+    [ -d "$repo/.git" ] || die "nothing in progress in $work"
+    advance
+    ;;
+  --abort)
+    [ ! -e "$work" ] || [ -d "$repo/.git" ] || die "$work is not a rebase this tool started: remove it yourself"
+    rm -rf "$work"
+    ;;
+  "" | -*)
+    echo "usage: rebase-jstack-patches <old-commit> | --continue | --abort" >&2
+    exit 2
+    ;;
+  *) start "$1" ;;
+esac
