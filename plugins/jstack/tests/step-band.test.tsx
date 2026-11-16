@@ -3,7 +3,7 @@ import type { Engine } from 'claude-code/testing'
 import type { On, RenderPropsOf } from 'claude-code'
 
 const TOOL = 'mcp__jstack__step'
-const BAND: RenderPropsOf['AbovePrompt'] = { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {} }
+const BAND: RenderPropsOf['AbovePrompt'] = { hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {} }
 function world(on: On, saved = new Map<string, unknown>()) {
   on('store.get', ($, e) => ({ value: saved.get(e.key) }))
   on('store.set', ($, e) => { saved.set(e.key, e.value); return { value: undefined } })

@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 import type { On, RenderPropsOf, SessionUsage } from 'claude-code'
 
-const BAND: RenderPropsOf['AbovePrompt'] = { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 160, scroll: { offset: 0, bodyRows: 10 }, view: {} }
+const BAND: RenderPropsOf['AbovePrompt'] = { hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 10, bodyColumns: 160, scroll: { offset: 0, bodyRows: 10 }, view: {} }
 const COMMANDS = ['simplify', 'code-review', 'remember:remember', 'ponytail:ponytail']
 const USAGE: SessionUsage = {
   startedAt: 0,

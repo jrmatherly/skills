@@ -386,38 +386,35 @@ index 37499a0..a9d70f3 100644
  
 -Write `~/.claude/rules/jstack-models.md`, an always-applied rule that sets jstack's model per role.
 +Write `~/.claude/rules/jstack-models.md`, a rule Claude Code loads in every session (it has no `paths` frontmatter), that sets jstack's model and reasoning effort per role.
-+
-+## Models
-+
-+An Agent call takes `model` (`opus`, `sonnet`, `haiku`, `fable`, or a full model ID such as `claude-opus-5-5`) and `effort` (`low`, `medium`, `high`, `xhigh`, `max`). A role value is `<model> <effort>`, such as `opus medium`. The value `inherit` runs the role on the parent's model and effort (omit both). Review seats may also be `codex`.
-+
-+### Codex seats
-+
-+A `codex` entry in a reviewer or judge list runs that seat as `codex exec -s read-only "<the seat's filled-in prompt>"` through Bash instead of an Agent call, so the panel gets a reviewer from another model family. Treat its output like any other seat's. Offer `codex` only when `command -v codex` succeeds, and only in read-only roles (`arena cross-judge pool`, `reflect tooling`). Runner, worker, and interrogate adversary roles write code or run repros, so they stay on Agent models.
  
- ## Steps
- 
+-## Steps
+-
 -### 1. Detect available models
-+### 1. Load current state
++## Models
  
 -Enumerate the model slugs you can pass to an `Agent` subagent in this session. That is the dependable source. If Cursor also exposes a models API or CLI that lists the user's entitled models, prefer it for completeness. If you cannot detect any, ask the user to paste the slugs they have access to. Never write a real slug you have not confirmed is available. The aliases `inherit-parent` and `auto` are always valid even though they are not detected slugs.
-+If `~/.claude/rules/jstack-models.md` exists, read it and treat its `# budget:` line and role values as the current choices. A model-only value from an older rule, such as `opus`, keeps its model and takes the budget's effort. Otherwise start from the step 5 table. Drop a line whose role is not in that table, such as `how explorer` or `why investigators`; it is from a retired role.
++An Agent call takes `model` (`opus`, `sonnet`, `haiku`, `fable`, or a full model ID such as `claude-opus-5-5`) and `effort` (`low`, `medium`, `high`, `xhigh`, `max`). A role value is `<model> <effort>`, such as `opus medium`. The value `inherit` runs the role on the parent's model and effort (omit both). Review seats may also be `codex`.
  
 -### 2. Load current state
-+### 2. Ask for a budget
++### Codex seats
  
 -The default role-to-model mapping is the rule shape shown in step 5 below. If `~/.claude/rules/jstack-models.md` already exists, read it and treat its `# budget` line and its role values as the current choices. Otherwise start from those defaults. A line whose role is not in step 5, such as `how explorer` or `why investigators`, is from a retired role. Drop it.
--
++A `codex` entry in a reviewer or judge list runs that seat as `codex exec -s read-only "<the seat's filled-in prompt>"` through Bash instead of an Agent call, so the panel gets a reviewer from another model family. Treat its output like any other seat's. Offer `codex` only when `command -v codex` succeeds, and only in read-only roles (`arena cross-judge pool`, `reflect tooling`). Runner, worker, and interrogate adversary roles write code or run repros, so they stay on Agent models.
+ 
 -A rule without the `# defaults: 2` line comes from an older setup. That setup wrote a line for every role, so some of its values are old defaults, not choices. An old slug is one that matches `grok-*`. Before step 3, replace these values:
--
++## Steps
+ 
 -- An old slug in `feature, refactoring`, `bug-fix`, `perf-issue`, `hillclimb`, `reflect tooling`, or `swarm workers` takes the role's step 5 default.
 -- A `claude-opus-*` value in `hardest tasks` takes the role's step 5 default.
 -- In a panel role (`arena runners`, `arena cross-judge pool`, `architect runners`, `interrogate reviewers`), a list of exactly one `claude-opus-*` entry and one old slug, in either order, takes the role's step 5 list. In any other list, each old slug becomes `claude-opus-5-5-high-fast`.
--
++### 1. Load current state
+ 
 -Every other value is the user's choice and stays, including an old slug in any other role and every `inherit-parent` or `auto` value. Tell the user which values you replaced.
--
++If `~/.claude/rules/jstack-models.md` exists, read it and treat its `# budget:` line and role values as the current choices. A model-only value from an older rule, such as `opus`, keeps its model and takes the budget's effort. Otherwise start from the step 5 table. Drop a line whose role is not in that table, such as `how explorer` or `why investigators`; it is from a retired role.
+ 
 -### 3. Budget, map, and confirm
--
++### 2. Ask for a budget
+ 
 -**(a) Ask for a budget.** Prefer AskUserQuestion over free text. Offer these four options with these exact labels, and name the current budget when the rule records one. With no rule, say that `large` matches the skill defaults.
 +Use AskUserQuestion with these labels, naming the current budget when the rule records one. With no rule, say that `small` matches the skill defaults.
  
