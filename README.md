@@ -91,7 +91,7 @@ Avoid `--all`: the CLI also finds the plugins' skills under `plugins/` and this 
 
 ## Checks
 
-`.github/workflows/check.yml` runs on every pull request and push to `main`: shellcheck over the scripts, hooks and tests, `jstack/tests/wordmerge.sh`, `scripts/check-resume`, `scripts/check-jstack --no-types` (validate and `claude plugin test`, no login needed) and the j-mode scripts' Bun tests, plus a gitleaks job over the whole history. The job installs the current Claude Code release on purpose: a validate or test failure after a Claude Code update is news about the mod, not noise. The type-check and the full `scripts/sync-jstack` stay local, since they need the declarations `/plugin-authoring` writes.
+`.github/workflows/check.yml` runs on every pull request and push to `main`: shellcheck over the scripts, hooks and tests, the `wordmerge`, `rebase-patches` and `guard-generated` tests under `jstack/tests/`, `scripts/check-resume`, `scripts/check-jstack --no-types` (validate and `claude plugin test`, no login needed) and the j-mode scripts' Bun tests, plus a gitleaks job over the whole history. The job installs the current Claude Code release on purpose: a validate or test failure after a Claude Code update is news about the mod, not noise. The type-check and the full `scripts/sync-jstack` stay local, since they need the declarations `/plugin-authoring` writes.
 
 Contributing from a clone: run `git config core.hooksPath .githooks` once, so the gitleaks pre-push hook scans what you push (it skips with a note when gitleaks is not installed).
 
@@ -130,7 +130,7 @@ Sync runs upstream code (Bun's install and tests), so it's fenced in: the pin mu
 
 1. Set `commit=` in `jstack/upstream` to the new upstream commit's full SHA, after reading what changed upstream (`git log -p <old>..<new> -- pstack`).
 2. Run `scripts/sync-jstack`. A patch that no longer applies stops it with the patch's name, leaving `plugins/jstack/` untouched.
-3. Run `scripts/rebase-jstack-patches <old commit>`. It replays the patches, in order, on the tree the new pin produces and writes them back. Where upstream and a patch changed the same paragraph it merges word by word (`jstack/wordmerge.py`), and it stops for a hand on what that cannot settle: resolve those in the scratch tree it names, then run it with `--continue` (`--abort` drops the attempt).
+3. If a patch stopped step 2, run `scripts/rebase-jstack-patches <old commit>`. It replays the patches, in order, on the tree the new pin produces and writes them back. Where upstream and a patch changed the same paragraph it merges word by word (`jstack/wordmerge.py`), and it stops for a hand on what that cannot settle: resolve those in the scratch tree it names, then run it with `--continue` (`--abort` drops the attempt).
 4. Re-run `scripts/sync-jstack`, review `git diff plugins/`, commit.
 
 In a Claude Code session here, the `upstream-sync` skill (`.claude/skills/upstream-sync/`) walks these steps and holds the standing choices on what to adopt, adapt or drop.

@@ -10,7 +10,7 @@ Personal Agent Skills plus a Claude Code plugin marketplace (`jrmatherly-skills`
 | `skills/supabase-prompts/SKILL.md` | Hand-written | Editing it |
 | `skills/supabase-prompts/references/`, its `LICENSE` | Supabase, at a pinned commit | `scripts/sync-supabase-prompts` |
 | `plugins/jstack/` | Generated from pstack (cursor/plugins), at a pinned commit | The inputs in `jstack/`, then `scripts/sync-jstack` |
-| `jstack/` | The fork's inputs: pin, substitutions, patches, tests | Editing it (`.claude/rules/jstack-fork.md`) |
+| `jstack/` | The fork's inputs: pin, substitutions, patches, the merge helper, tests | Editing it (`.claude/rules/jstack-fork.md`) |
 | `plugins/resume/` | One-time fork, no upstream sync | Editing it, then `scripts/check-resume` |
 
 A hook refuses Edit and Write on the two generated trees. To take a new upstream release, use the `upstream-sync` skill.
@@ -19,11 +19,12 @@ A hook refuses Edit and Write on the two generated trees. To take a new upstream
 
 `.github/workflows/check.yml` is the list CI runs. Locally:
 
-- `scripts/sync-jstack` regenerates jstack and runs every jstack check. It needs `bun`, and the type-check needs the declarations `/plugin-authoring` writes (README, "Refresh the mod types").
-- `scripts/check-jstack --no-types plugins/jstack` checks the tree as committed, without the type-check.
-- `scripts/check-resume` after any edit under `plugins/resume/`. It needs `ruby`.
+- `scripts/sync-jstack` regenerates jstack and runs `check-jstack`, upstream's Bun tests and two of the tests under `jstack/tests/`. It needs `bun`, `tsc` and the `claude` CLI, and the type-check needs the declarations `/plugin-authoring` writes (README, "Refresh the mod types").
+- `scripts/check-jstack --no-types plugins/jstack` checks the tree as committed, without the type-check. It still needs `claude`.
+- `scripts/check-resume` after any edit under `plugins/resume/`. It needs `ruby` and `claude`.
 - `shellcheck --severity=warning scripts/* .githooks/* .claude/hooks/* jstack/tests/*.sh`.
-- `bash jstack/tests/wordmerge.sh` after touching `jstack/wordmerge.py`. It needs `python3`.
+- `bash jstack/tests/wordmerge.sh` and `bash jstack/tests/rebase-patches.sh` after touching `jstack/wordmerge.py` or `scripts/rebase-jstack-patches`. They need `python3`, and neither uses the network.
+- `bash jstack/tests/guard-generated.sh` after touching `.claude/hooks/guard-generated.sh`. It needs `jq`, as the hook does.
 
 ## Landing a change
 

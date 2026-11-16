@@ -22,8 +22,8 @@ Change an input instead, then run `scripts/sync-jstack` and review `git diff plu
 | `30-models` | `<model> <effort>` role values, the `setup-jstack` rewrite, Codex seats |
 | `40-comments` | The comment policy: keep a non-obvious why |
 | `50-skill-refs` | Skills are read by path, since they set `disable-model-invocation` |
-| `60-safety` | Install flags, approval before filing, Codex prompts over stdin |
-| `70-reflect` | Learnings from `/jstack:reflect` passes, one patch per pass |
+| `60-safety` | Install flags, approval before filing, Codex prompts over stdin, and `setup-jstack` without the retired-role cleanup or the verification-skill offers |
+| `70-reflect` | Learnings from `/jstack:reflect` passes (README, "Change or refresh a patch") |
 | `80-mod`, `90-band` | The hooks module and the band above the prompt |
 | `95-invocation` | `j-mode` stays on the Skill tool |
 

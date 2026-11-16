@@ -29,7 +29,7 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       - run: sudo apt-get install -y shellcheck
       - run: shellcheck --severity=warning scripts/* .githooks/* .claude/hooks/* jstack/tests/*.sh
-      - run: bash jstack/tests/wordmerge.sh
+      - run: for t in wordmerge rebase-patches guard-generated; do bash "jstack/tests/$t.sh"; done
       - run: scripts/check-resume
       - run: scripts/check-jstack --no-types
       - run: bun install --frozen-lockfile --production --ignore-scripts && bun test watch-pr check-plan.test.ts
