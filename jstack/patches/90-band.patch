@@ -374,7 +374,7 @@ index a07fcf2..8aa3989 100644
  
 diff --git a/tests/meter-band.test.tsx b/tests/meter-band.test.tsx
 new file mode 100644
-index 0000000..c21a8af
+index 0000000..d40b05e
 --- /dev/null
 +++ b/tests/meter-band.test.tsx
 @@ -0,0 +1,410 @@
@@ -382,7 +382,7 @@ index 0000000..c21a8af
 +import type { Engine } from 'claude-code/testing'
 +import type { On, RenderPropsOf, SessionUsage } from 'claude-code'
 +
-+const BAND: RenderPropsOf['AbovePrompt'] = { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 160, scroll: { offset: 0, bodyRows: 10 }, view: {} }
++const BAND: RenderPropsOf['AbovePrompt'] = { hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 10, bodyColumns: 160, scroll: { offset: 0, bodyRows: 10 }, view: {} }
 +const COMMANDS = ['simplify', 'code-review', 'remember:remember', 'ponytail:ponytail']
 +const USAGE: SessionUsage = {
 +  startedAt: 0,

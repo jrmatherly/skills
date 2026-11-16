@@ -29,7 +29,7 @@ jstack also ships a mod (a hooks module) that draws a band above the prompt. The
 - with More on, stat tiles for the cost, tokens (in, out and cached apart), turns, agent time, the 5h and 7d quota with reset times and, when the Hindsight config file exists, the memory state (on, off when the config's `disabled` kill switch is set, n/a when the file won't parse; Memory refuses to start the daemon while it is off)
 - a separate row counting running and finished subagents, which expands to one line per agent (type and model)
 
-The More and agents choices persist through `$.store`. The mobile app has no Select, so it gets no menus. The mod needs Claude Code 2.1.299 or later (`Text tabular`) and was tested on 2.1.310.
+The More and agents choices persist through `$.store`. The mobile app has no Select, so it gets no menus. The mod needs Claude Code 2.1.299 or later (`Text tabular`) and was tested on 2.1.325.
 
 What the mod touches: the only processes it starts are `pnpm check` and macOS `open` on Ponytail's board page, each on a pick. The only files it reads are Ponytail's `.ponytail-active` level flag and the session folder's `package.json`. It makes no network or model calls, and its private tool `mcp__jstack__step` costs no model call. `claude plugin validate plugins/jstack` lists what it can reach:
 
