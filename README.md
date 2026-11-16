@@ -78,7 +78,15 @@ claude plugin install jstack@jrmatherly-skills
 claude plugin install resume@jrmatherly-skills
 ```
 
-The plugins have no `version`, so updates follow this repo's commits: `claude plugin marketplace update jrmatherly-skills`.
+The plugins have no `version`, so updates follow this repo's commits. Refresh the marketplace, then update each plugin, and restart Claude Code:
+
+```shell
+claude plugin marketplace update jrmatherly-skills
+claude plugin update jstack@jrmatherly-skills
+claude plugin update resume@jrmatherly-skills
+```
+
+The first command alone only refreshes the catalog: an installed plugin stays on the commit it was installed from.
 
 **Skills CLI** (Codex, Amp and other agents). Install skills by name, globally:
 
