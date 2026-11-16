@@ -26,7 +26,7 @@ index 7977ae0..2041daa 100644
  Never edit a skill under `plugins/cache/`. Before approval, show its destination, `.claude/skills/<skill>/` or `~/.claude/skills/<skill>/`. After approval, copy the skill folder there and edit the copy. Never open a PR or push.
  
 diff --git a/skills/setup-jstack/SKILL.md b/skills/setup-jstack/SKILL.md
-index 0214dd3..7b4a8ae 100644
+index a9d70f3..6c64669 100644
 --- a/skills/setup-jstack/SKILL.md
 +++ b/skills/setup-jstack/SKILL.md
 @@ -13,13 +13,13 @@ An Agent call takes `model` (`opus`, `sonnet`, `haiku`, `fable`, or a full model
@@ -40,7 +40,7 @@ index 0214dd3..7b4a8ae 100644
  
  ### 1. Load current state
  
--If `~/.claude/rules/jstack-models.md` exists, read it and treat its `# budget:` line and role values as the current choices. A model-only value from an older rule, such as `opus`, keeps its model and takes the budget's effort. Otherwise start from the step 5 table. Drop a line whose role is not in that table; it is from a retired role.
+-If `~/.claude/rules/jstack-models.md` exists, read it and treat its `# budget:` line and role values as the current choices. A model-only value from an older rule, such as `opus`, keeps its model and takes the budget's effort. Otherwise start from the step 5 table. Drop a line whose role is not in that table, such as `how explorer` or `why investigators`; it is from a retired role.
 +If `~/.claude/rules/jstack-models.md` exists, read it and treat its `# budget:` line and role values as the current choices. A model-only value from an older rule, such as `opus`, keeps its model and takes the budget's effort. Otherwise start from the step 5 table.
  
  ### 2. Ask for a budget
@@ -54,7 +54,7 @@ index 0214dd3..7b4a8ae 100644
  
  ### 5. Write the rule
  
-@@ -68,11 +68,3 @@ interrogate reviewers: opus medium, sonnet medium
+@@ -64,11 +64,3 @@ interrogate reviewers: fable medium, opus medium, sonnet medium
  ### 6. Confirm
  
  Tell the user the rule was written and applies to new sessions. Re-running this skill updates it.

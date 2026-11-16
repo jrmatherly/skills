@@ -360,7 +360,7 @@ index 80335ea..a03f30f 100644
 +  registerMeter(on)
  }
 diff --git a/skills/j-mode/SKILL.md b/skills/j-mode/SKILL.md
-index f6500d3..f1e4e9c 100644
+index a07fcf2..8aa3989 100644
 --- a/skills/j-mode/SKILL.md
 +++ b/skills/j-mode/SKILL.md
 @@ -126,7 +126,7 @@ Comments follow the same rule as the reply. Write them clean as you go. Keep a c

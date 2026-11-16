@@ -46,23 +46,19 @@ Overwrite the whole file (re-runs stay idempotent). Shape, at the `small` budget
 # jstack model configuration. One line per role, `<model> <effort>`. Delete a line to fall back to the skill default.
 # `inherit`: the role runs on the parent's model and effort (omit both). `codex`: a read-only seat run by `codex exec`.
 # budget: small (medium)
-feature, refactoring: sonnet medium
-bug-fix: sonnet medium
-perf-issue: sonnet medium
-hillclimb: sonnet medium
+feature, refactoring: opus medium
+bug-fix: opus medium
+perf-issue: opus medium
+hillclimb: opus medium
 judgment and prose: opus medium
-hardest tasks: opus medium
-how explorer: haiku medium
-how explainer: opus medium
-why investigators: haiku medium
-why synthesizer: opus medium
+hardest tasks: fable medium
 reflect tooling: sonnet medium
 reflect judgment, divergent, synthesizer: opus medium
-arena runners: opus medium, sonnet medium
-arena cross-judge pool: opus medium, sonnet medium
+arena runners: fable medium, opus medium, sonnet medium
+arena cross-judge pool: fable medium, opus medium, sonnet medium
 swarm workers: sonnet medium
-architect runners: opus medium, sonnet medium
-interrogate reviewers: opus medium, sonnet medium
+architect runners: fable medium, opus medium, sonnet medium
+interrogate reviewers: fable medium, opus medium, sonnet medium
 ```
 
 ### 6. Confirm

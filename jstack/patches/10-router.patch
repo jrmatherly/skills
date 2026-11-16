@@ -64,7 +64,7 @@ index 2ea605b..9b74d5b 100644
  - User wants to capture one narrow workflow (e.g. "how I write commit messages"). That's a regular skill, not a mode skill.
  
 diff --git a/skills/j-mode/SKILL.md b/skills/j-mode/SKILL.md
-index 0f18a6c..3c53b09 100644
+index 274d587..5722a6b 100644
 --- a/skills/j-mode/SKILL.md
 +++ b/skills/j-mode/SKILL.md
 @@ -1,9 +1,7 @@
@@ -78,7 +78,7 @@ index 0f18a6c..3c53b09 100644
  ---
  
  # J mode
-@@ -24,15 +22,15 @@ Remaining triggers:
+@@ -23,15 +21,15 @@ Remaining triggers:
  - Parallel fan-out → the **swarm** skill for coverage matrices, races, gauntlets, and exploration partitions. Use **arena** for design or code bakeoffs with base selection and grafting.
  - Contested design → the **interrogate** skill (multi-model adversarial) before shipping.
  - Nontrivial multi-step → write the throughput checkpoint (Feature step 3).
@@ -99,7 +99,7 @@ index 0f18a6c..3c53b09 100644
  - Broken skill mid-task → fix it in its own PR. Don't block. Don't silently work around it.
  - Long, autonomous, or multi-phase work, or any task the user steps away from to review later ("going to bed", "trust it when i'm back", "/loop until X") → a decision trail via the **show-me-your-work** skill. Commit it when stakes need an auditable record. Keep it local otherwise.
  
-@@ -40,6 +38,8 @@ Remaining triggers:
+@@ -39,6 +37,8 @@ Remaining triggers:
  
  Read the leaf skill in full for any principle you apply. Each entry names when it applies. Each leaf is the **principle-<title>** skill, with the title in kebab case, hyphens kept and other punctuation dropped, unless the entry gives its name.
  
@@ -108,7 +108,7 @@ index 0f18a6c..3c53b09 100644
  **Core**
  
  - **Laziness Protocol.** Refactoring, sizing a diff, or tempted to add abstractions, layers, or signal threading. Bias to deletion and the smallest change that solves the problem.
-@@ -144,7 +144,7 @@ A large or cross-cutting effort (a migration across many call sites, an ambitiou
+@@ -143,7 +143,7 @@ A large or cross-cutting effort (a migration across many call sites, an ambitiou
  - **Autopilot-full.** A queue of independent PRs run to merged with full autonomy. One owner per PR carries build through merge, and the root swarm-verifies each PR before its owner merges ("autopilot this queue", "full autopilot", one-owner-per-PR programs).
  - **Autopilot-stack.** Autopilot-full without the merge. A queue of PRs built and verified with full autonomy, then handed to the operator to land. A PR stacks only on a PR it builds on ("autopilot-stack", "autopilot, don't merge", "stack them, don't ship", "build the stack, I'll land it").
  - **Session pickup.** Resuming or taking over a prior agent's in-flight work from a transcript, cloud-agent URL, or pushed branch.
@@ -156,7 +156,7 @@ index 14d5783..2e86001 100644
  Babysitting starts when the user asks for it, which is normally once a phase or a whole stack is built, not when a PR opens. Finish the stack, get it green here, then land it through Shipping.
  
 diff --git a/skills/j-mode/playbooks/multi-phase-plan.md b/skills/j-mode/playbooks/multi-phase-plan.md
-index eccf64d..f0b53df 100644
+index 54f89ad..fa9c009 100644
 --- a/skills/j-mode/playbooks/multi-phase-plan.md
 +++ b/skills/j-mode/playbooks/multi-phase-plan.md
 @@ -6,13 +6,13 @@
@@ -168,7 +168,7 @@ index eccf64d..f0b53df 100644
  6. Run `node jstack/skills/j-mode/scripts/check-plan.mjs <plan.md>` and fix every line it prints (the **principle-encode-lessons-in-structure** skill).
  7. Hand back. Post the plan path and the script's output, then stop. Execution starts on the operator's explicit go, under the execution playbook the plan names.
  
- **Verification.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked (the **principle-prove-it-works** skill). That sentence is the verification rule. Every verification block opens with it. The live block is mandatory. Ten lanes at the PR head drive the real surface through its control skill, per the **swarm** skill, on the `swarm workers` model (default `grok-4.7-xhigh-fast`). Each lane is one box with a concrete scenario, the screenshot it saves, and its pass predicate. One lane is the **Regression lane against trunk.** It runs the same load-bearing scenario on trunk and head. If trunk does not have the feature, the lane records that fact and gates the behavior the diff adds plus the end state the user waits for instead of inventing a trunk result. The perf gate is dual-sided. Trunk and head must both produce the named metric. If trunk lacks the feature, also isolate the work the diff adds and set an absolute budget for that work plus the end-to-end state the user waits for. Do not claim a ratio between unlike scenarios. The perf block names the metric, the interleaved probe, the trunk baseline measured first, and the rule with the number that fails. A PR that changes an interaction is review-gated. The operator reviews it in chat with screenshots and a video before merge. A PR that changes no interaction writes `**Review gate.** None. <PR id> is not review-gated.` and no boxes under it.
+ **Verification.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked (the **principle-prove-it-works** skill). That sentence is the verification rule. Every verification block opens with it. The live block is mandatory. Ten lanes at the PR head drive the real surface through its control skill, per the **swarm** skill, on the `swarm workers` model (default `claude-opus-5-5-high-fast`). Each lane is one box with a concrete scenario, the screenshot it saves, and its pass predicate. One lane is the **Regression lane against trunk.** It runs the same load-bearing scenario on trunk and head. If trunk does not have the feature, the lane records that fact and gates the behavior the diff adds plus the end state the user waits for instead of inventing a trunk result. The perf gate is dual-sided. Trunk and head must both produce the named metric. If trunk lacks the feature, also isolate the work the diff adds and set an absolute budget for that work plus the end-to-end state the user waits for. Do not claim a ratio between unlike scenarios. The perf block names the metric, the interleaved probe, the trunk baseline measured first, and the rule with the number that fails. A PR that changes an interaction is review-gated. The operator reviews it in chat with screenshots and a video before merge. A PR that changes no interaction writes `**Review gate.** None. <PR id> is not review-gated.` and no boxes under it.
  
 -**Control skill.** Pick it by surface. Browser, Electron, and web UIs use `control-ui` from `cursor-team-kit`. CLIs and TUIs use `control-cli` from `cursor-team-kit`. Native mobile uses whatever simulator-driving skill the repo has. A PR that touches two surfaces gets lanes on both. A surface with no control skill is a risk in Appendix C, and its live block still names how each lane drives it.
 +**Control skill.** Pick it by surface. Browser, Electron, and web UIs use the `chrome-devtools-mcp:chrome-devtools` skill. CLIs and TUIs use the `run` skill. Native mobile uses whatever simulator-driving skill the repo has. A PR that touches two surfaces gets lanes on both. A surface with no control skill is a risk in Appendix C, and its live block still names how each lane drives it.
@@ -223,7 +223,7 @@ index b2fc7d3..2d10e4b 100644
  Use this reference when the Babysit playbook (`../playbooks/babysit.md`) handles Bugbot or review-automation comments. The goal is not to ignore Bugbot by default. The goal is to stop treating every comment as a required code change.
  
 diff --git a/skills/reflect/SKILL.md b/skills/reflect/SKILL.md
-index b1ebb33..832eddf 100644
+index da6c7a3..30d808e 100644
 --- a/skills/reflect/SKILL.md
 +++ b/skills/reflect/SKILL.md
 @@ -53,9 +53,9 @@ Never edit a skill under `plugins/cache/`. Before approval, show its destination
@@ -240,7 +240,7 @@ index b1ebb33..832eddf 100644
  If your environment ships a SKILL.md validator, run it on every touched skill before declaring done.
  
 diff --git a/skills/reflect/references/synthesizer.md b/skills/reflect/references/synthesizer.md
-index 1a090d8..6d1dfef 100644
+index 60f2f9d..3c8cb56 100644
 --- a/skills/reflect/references/synthesizer.md
 +++ b/skills/reflect/references/synthesizer.md
 @@ -14,7 +14,7 @@ Apply each criterion to every finding:
@@ -260,17 +260,4 @@ index 1a090d8..6d1dfef 100644
 +| <new pattern, no existing skill is a real home> | <draft a new skill via skill-creator> | <new skill via skill-creator: <kebab-name>> |
  
  One row per finding. The user approves row by row.
- 
-diff --git a/skills/why/SKILL.md b/skills/why/SKILL.md
-index 576df63..9f16bc6 100644
---- a/skills/why/SKILL.md
-+++ b/skills/why/SKILL.md
-@@ -32,7 +32,7 @@ Before spawning investigators, build the seed context inline: file paths and lin
- 
- ### Discovery
- 
--Before spawning investigators, list the available MCPs from the Cursor environment. Use the available-tools map when present. Otherwise inspect the `mcps/` directory Cursor exposes for enabled MCP servers.
-+Before spawning investigators, list the MCP tools available in this session (their `mcp__<server>__<tool>` names, loading deferred ones with ToolSearch when needed).
- 
- Map each available MCP to one evidence category:
  
