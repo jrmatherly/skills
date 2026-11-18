@@ -1,9 +1,9 @@
 diff --git a/hooks/meter.tsx b/hooks/meter.tsx
 new file mode 100644
-index 0000000..39e6937
+index 0000000..b5f7d27
 --- /dev/null
 +++ b/hooks/meter.tsx
-@@ -0,0 +1,320 @@
+@@ -0,0 +1,344 @@
 +import { atom, read, update } from 'claude-code'
 +import type { EngineInterface, On } from 'claude-code'
 +
@@ -135,6 +135,17 @@ index 0000000..39e6937
 +  return (await daemonUp($, c.apiPort ?? DEFAULT_PORT)) ? 'on' : 'down'
 +}
 +const MEMORY_TONE: Partial<Record<MemoryState, 'success' | 'warning'>> = { on: 'success', down: 'warning' }
++// The embed's own readiness test, a 200 from /api/health, so another process on the port is not taken for the dashboard.
++// 45 tries, 2 s apart, are about 90 s past the embed's wait; the one sleep paces a try and bounds it, as in the daemon
++// probe, so a port that accepts but never answers costs no more than one that refuses
++async function dashboardUp($: EngineInterface, port: number): Promise<boolean> {
++  for (let i = 0; i < 45; i++) {
++    const pace = $.clock.sleep(2000)
++    if (await Promise.race([$.http.fetch(`http://127.0.0.1:${port}/api/health`).then(r => r.ok, () => false), pace.then(() => false)])) return true
++    await pace
++  }
++  return false
++}
 +let openingMemory = false
 +async function openMemory($: EngineInterface, config: string): Promise<void> {
 +  if (openingMemory) {
@@ -157,17 +168,30 @@ index 0000000..39e6937
 +    const profile = c.daemonProfile || 'coding-agent'
 +    // The hook package's own rule for launching the embed (getEmbedCommand in its daemon starter)
 +    const embed = c.embedPackagePath ? ['uv', 'run', '--directory', c.embedPackagePath, 'hindsight-embed'] : ['uvx', `hindsight-embed@${c.embedVersion || 'latest'}`]
-+    // Starts the daemon when it is down and returns once the page answers (about 15 s cold); a second start is a no-op
++    // Starts the daemon when it is down; a no-op once the dashboard answers
 +    const r = await $.process.run([...embed, '-p', profile, 'ui', 'start', '--hostname', '127.0.0.1'], { timeoutMs: 180000 })
-+    if (r.exitCode !== 0) {
-+      $.ui.toast(`could not start the memory dashboard: ${(r.stderr.trim() || r.stdout.trim()).slice(-200)}`)
-+      return
-+    }
-+    // The embed records the dashboard's port per profile next to its logs, but only when it did the start itself; its default is the daemon's port plus 10000
++    // The embed records the dashboard's port per profile next to its logs, but only when its own start saw the page answer; its default is the daemon's port plus 10000
 +    const recorded = (await $.fs.read(`${await $.env.get('HOME')}/.hindsight/profiles/${profile}.ui.port`).catch(() => '')).trim()
++    let port = /^\d+$/.test(recorded) ? Number(recorded) : (c.apiPort ?? DEFAULT_PORT) + 10000
++    if (r.exitCode !== 0) {
++      // Rich draws the embed's errors as a panel after its progress frames, the CLI's on stdout and the manager's on stderr:
++      // keep from the first ✗ title, without the borders and the padding
++      const said = `${r.stderr}\n${r.stdout}`.replace(/[\u2500-\u257f]/g, ' ').replace(/\s+/g, ' ').trim().replace(/^.*?(?=✗)/, '')
++      // The embed waits 30 s for the page, then exits 1 and leaves npx running: a first download of the dashboard package outlasts that wait.
++      // Its title names the port it tried, which a timed-out start never records
++      const timedOut = /UI Failed \(Timeout\) \(:(\d+)\)/.exec(said)
++      if (timedOut) {
++        port = Number(timedOut[1])
++        $.ui.toast('the dashboard has not answered yet, waiting up to 90 s more…')
++      }
++      if (!timedOut || !(await dashboardUp($, port))) {
++        $.ui.toast(`could not start the memory dashboard: ${said.slice(-200) || `exit ${r.exitCode}, no output`}`)
++        return
++      }
++    }
 +    probed = null
 +    $.ui.invalidate('ui.render')
-+    await openTarget($, `http://localhost:${/^\d+$/.test(recorded) ? recorded : (c.apiPort ?? DEFAULT_PORT) + 10000}`, 'memory dashboard')
++    await openTarget($, `http://localhost:${port}`, 'memory dashboard')
 +  } catch (err) {
 +    $.ui.toast(`could not open the memory dashboard: ${err instanceof Error ? err.message : String(err)}`)
 +  } finally {
@@ -374,10 +398,10 @@ index a07fcf2..8aa3989 100644
  
 diff --git a/tests/meter-band.test.tsx b/tests/meter-band.test.tsx
 new file mode 100644
-index 0000000..d40b05e
+index 0000000..0fdcce9
 --- /dev/null
 +++ b/tests/meter-band.test.tsx
-@@ -0,0 +1,410 @@
+@@ -0,0 +1,474 @@
 +import { expect, mock, test } from 'claude-code/testing'
 +import type { Engine } from 'claude-code/testing'
 +import type { On, RenderPropsOf, SessionUsage } from 'claude-code'
@@ -390,7 +414,7 @@ index 0000000..d40b05e
 +  rateLimits: [{ kind: 'five_hour', percentUsed: 12, resetsAt: '2026-10-22T15:40:00Z' }, { kind: 'seven_day', percentUsed: 60 }],
 +  cost: { usd: 0.42 },
 +}
-+type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean; board?: boolean; memory?: string; daemonDown?: boolean; daemonHangs?: boolean }
++type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean; board?: boolean; memory?: string; daemonDown?: boolean; daemonHangs?: boolean; dashboardRefusals?: number; dashboardHangs?: boolean; dashboardOther?: boolean }
 +function world(on: On, w: World = {}) {
 +  const ran: unknown[] = []
 +  const toasts: string[] = []
@@ -422,7 +446,8 @@ index 0000000..d40b05e
 +  on('turn.complete', () => ({ text: '' }))
 +  on('ui.toast', ($, e) => { toasts.push(e.text); return { value: undefined } })
 +  const daemon = { down: w.daemonDown ?? false }
-+  on('http.fetch', ($, e) => { fetched.push(e.url); if (w.daemonHangs) return new Promise<never>(() => {}); return daemon.down ? ({ deny: 'refused' } as never) : { value: { status: 200, ok: true, headers: {}, text: '{}' } } })
++  let refusals = w.dashboardRefusals ?? 0
++  on('http.fetch', ($, e) => { fetched.push(e.url); if (e.url.endsWith('/api/health')) { if (w.dashboardHangs) return new Promise<never>(() => {}); if (refusals-- > 0) return { deny: 'refused' } as never; if (w.dashboardOther) return { value: { status: 404, ok: false, headers: {}, text: '' } } } if (w.daemonHangs) return new Promise<never>(() => {}); return daemon.down ? ({ deny: 'refused' } as never) : { value: { status: 200, ok: true, headers: {}, text: '{}' } } })
 +  on('clock.sleep', () => ({ value: undefined }))
 +  on('ui.render', () => ({ type: 'Text', props: {}, children: ['below'] }))
 +  return { ran, toasts, saved, files, fetched, daemon }
@@ -585,6 +610,69 @@ index 0000000..d40b05e
 +  expect(toasts).toEqual(['starting the memory dashboard…', 'starting the memory dashboard…', 'could not start the memory dashboard: uv: no such tool'])
 +  await ui.press({ key: 'details' })
 +  expect(await ui.find({ key: 'tile-memory' })).toBeUndefined()
++})
++// What hindsight-embed leaves on stderr when its own 30 s wait for the dashboard runs out: Rich's last progress frame, then the
++// failure panel. The port file is 29001; the panel names the port the embed tried
++const TIMED_OUT = { ...PASS, exitCode: 1, stderr: "╭─ Starting UI (coding-agent @ :29002) ─╮\n│  Starting UI for profile 'coding-agent'...  │\n│  ⏳ Waiting for UI... (29s elapsed)          │\n╰──────────────────────────────────╯\n╭─ ✗ UI Failed (Timeout) (:29002) ─╮\n│                                  │\n│  UI failed to start (timeout)    │\n│                                  │\n│  See full log: /home/u/ui.log    │\n│                                  │\n╰──────────────────────────────────╯\n" }
++test('a start that times out while the dashboard is still installing waits for the page on the port the embed tried, then opens it', async ($, on) => {
++  const { toasts, fetched } = world(on, { memory: MEMORY, dashboardRefusals: 3 })
++  const argv: unknown[] = []
++  on('process.run', ($, e) => { argv.push(e.argv); return { value: argv.length === 1 ? TIMED_OUT : PASS } })
++  await start($)
++  const ui = await mount($)
++  await ui.press({ key: 'memory' })
++  expect(argv[1]).toEqual(['open', 'http://localhost:29002'])
++  expect(fetched.filter(u => u === 'http://127.0.0.1:29002/api/health').length).toBe(4)
++  expect(toasts).toEqual(['starting the memory dashboard…', 'the dashboard has not answered yet, waiting up to 90 s more…'])
++})
++test('a start that times out and never answers toasts the failure panel alone, without its borders', async ($, on) => {
++  const { toasts } = world(on, { memory: MEMORY, dashboardRefusals: Infinity })
++  const argv: unknown[] = []
++  on('process.run', ($, e) => { argv.push(e.argv); return { value: TIMED_OUT } })
++  await start($)
++  const ui = await mount($)
++  await ui.press({ key: 'memory' })
++  expect(argv.length).toBe(1)
++  expect(toasts.at(-1)).toBe('could not start the memory dashboard: ✗ UI Failed (Timeout) (:29002) UI failed to start (timeout) See full log: /home/u/ui.log')
++})
++test('a dashboard port that accepts but never answers does not hold the button', async ($, on) => {
++  const { toasts } = world(on, { memory: MEMORY, dashboardHangs: true })
++  on('process.run', () => ({ value: TIMED_OUT }))
++  await start($)
++  const ui = await mount($)
++  await ui.press({ key: 'memory' })
++  await ui.press({ key: 'memory' })
++  expect(toasts.filter(t => t.startsWith('could not start the memory dashboard')).length).toBe(2)
++})
++test('another process answering on the dashboard port is not taken for the dashboard', async ($, on) => {
++  const { toasts } = world(on, { memory: MEMORY, dashboardOther: true })
++  const argv: unknown[] = []
++  on('process.run', ($, e) => { argv.push(e.argv); return { value: TIMED_OUT } })
++  await start($)
++  const ui = await mount($)
++  await ui.press({ key: 'memory' })
++  expect(argv.length).toBe(1)
++  expect(toasts.at(-1)).toBe('could not start the memory dashboard: ✗ UI Failed (Timeout) (:29002) UI failed to start (timeout) See full log: /home/u/ui.log')
++})
++test('a failed start toasts the panel the CLI prints on stdout past installer noise on stderr, and the exit code when it says nothing', async ($, on) => {
++  const { toasts } = world(on, { memory: MEMORY })
++  const results = [{ ...PASS, exitCode: 1, stderr: 'Installed 3 packages in 12ms\n', stdout: '╭─ ✗ Error ─╮\n│ Failed to start daemon (required for UI) │\n╰───────────╯\n' }, { ...PASS, exitCode: 137 }]
++  on('process.run', () => ({ value: results.shift()! }))
++  await start($)
++  const ui = await mount($)
++  await ui.press({ key: 'memory' })
++  await ui.press({ key: 'memory' })
++  expect(toasts.filter(t => t.startsWith('could not'))).toEqual(['could not start the memory dashboard: ✗ Error Failed to start daemon (required for UI)', 'could not start the memory dashboard: exit 137, no output'])
++})
++test('a failed start that is not the dashboard wait toasts at once, even when it says timeout', async ($, on) => {
++  const { toasts, fetched } = world(on, { memory: MEMORY })
++  on('process.run', () => ({ value: { ...PASS, exitCode: 1, stderr: '╭─ ✗ Daemon Failed (Timeout) (:9077) ─╮\n│  Daemon failed to start (timeout)  │\n╰────────────────────────────────────╯\n' } }))
++  await start($)
++  const ui = await mount($)
++  const probes = fetched.length
++  await ui.press({ key: 'memory' })
++  expect(fetched.length).toBe(probes)
++  expect(toasts).toEqual(['starting the memory dashboard…', 'could not start the memory dashboard: ✗ Daemon Failed (Timeout) (:9077) Daemon failed to start (timeout)'])
 +})
 +test('the daemon probe is cached across draws and cleared when the button starts the daemon', async ($, on) => {
 +  const { fetched } = world(on, { memory: MEMORY })
