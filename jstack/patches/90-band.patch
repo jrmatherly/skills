@@ -1,9 +1,9 @@
 diff --git a/hooks/meter.tsx b/hooks/meter.tsx
 new file mode 100644
-index 0000000..39e6937
+index 0000000..f01c013
 --- /dev/null
 +++ b/hooks/meter.tsx
-@@ -0,0 +1,320 @@
+@@ -0,0 +1,335 @@
 +import { atom, read, update } from 'claude-code'
 +import type { EngineInterface, On } from 'claude-code'
 +
@@ -135,6 +135,15 @@ index 0000000..39e6937
 +  return (await daemonUp($, c.apiPort ?? DEFAULT_PORT)) ? 'on' : 'down'
 +}
 +const MEMORY_TONE: Partial<Record<MemoryState, 'success' | 'warning'>> = { on: 'success', down: 'warning' }
++// Any answer counts, the page redirects; 45 tries are about 90 s past the embed's own wait
++async function dashboardUp($: EngineInterface, port: number): Promise<boolean> {
++  $.ui.toast('the dashboard is still installing, waiting for it…')
++  for (let i = 0; i < 45; i++) {
++    if (await $.http.fetch(`http://127.0.0.1:${port}`).then(() => true, () => false)) return true
++    await $.clock.sleep(2000)
++  }
++  return false
++}
 +let openingMemory = false
 +async function openMemory($: EngineInterface, config: string): Promise<void> {
 +  if (openingMemory) {
@@ -159,15 +168,21 @@ index 0000000..39e6937
 +    const embed = c.embedPackagePath ? ['uv', 'run', '--directory', c.embedPackagePath, 'hindsight-embed'] : ['uvx', `hindsight-embed@${c.embedVersion || 'latest'}`]
 +    // Starts the daemon when it is down and returns once the page answers (about 15 s cold); a second start is a no-op
 +    const r = await $.process.run([...embed, '-p', profile, 'ui', 'start', '--hostname', '127.0.0.1'], { timeoutMs: 180000 })
-+    if (r.exitCode !== 0) {
-+      $.ui.toast(`could not start the memory dashboard: ${(r.stderr.trim() || r.stdout.trim()).slice(-200)}`)
-+      return
-+    }
 +    // The embed records the dashboard's port per profile next to its logs, but only when it did the start itself; its default is the daemon's port plus 10000
 +    const recorded = (await $.fs.read(`${await $.env.get('HOME')}/.hindsight/profiles/${profile}.ui.port`).catch(() => '')).trim()
++    const port = /^\d+$/.test(recorded) ? Number(recorded) : (c.apiPort ?? DEFAULT_PORT) + 10000
++    if (r.exitCode !== 0) {
++      // Rich draws the embed's errors as a panel: drop the borders and the padding
++      const said = (r.stderr.trim() || r.stdout).replace(/[\u2500-\u257f]/g, ' ').replace(/\s+/g, ' ').trim()
++      // The embed waits 30 s and leaves npx running; a first download of the dashboard package took 48 s
++      if (!/timeout/i.test(said) || !(await dashboardUp($, port))) {
++        $.ui.toast(`could not start the memory dashboard: ${said.slice(-200)}`)
++        return
++      }
++    }
 +    probed = null
 +    $.ui.invalidate('ui.render')
-+    await openTarget($, `http://localhost:${/^\d+$/.test(recorded) ? recorded : (c.apiPort ?? DEFAULT_PORT) + 10000}`, 'memory dashboard')
++    await openTarget($, `http://localhost:${port}`, 'memory dashboard')
 +  } catch (err) {
 +    $.ui.toast(`could not open the memory dashboard: ${err instanceof Error ? err.message : String(err)}`)
 +  } finally {
@@ -374,10 +389,10 @@ index a07fcf2..8aa3989 100644
  
 diff --git a/tests/meter-band.test.tsx b/tests/meter-band.test.tsx
 new file mode 100644
-index 0000000..d40b05e
+index 0000000..f4640d9
 --- /dev/null
 +++ b/tests/meter-band.test.tsx
-@@ -0,0 +1,410 @@
+@@ -0,0 +1,434 @@
 +import { expect, mock, test } from 'claude-code/testing'
 +import type { Engine } from 'claude-code/testing'
 +import type { On, RenderPropsOf, SessionUsage } from 'claude-code'
@@ -390,7 +405,7 @@ index 0000000..d40b05e
 +  rateLimits: [{ kind: 'five_hour', percentUsed: 12, resetsAt: '2026-10-22T15:40:00Z' }, { kind: 'seven_day', percentUsed: 60 }],
 +  cost: { usd: 0.42 },
 +}
-+type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean; board?: boolean; memory?: string; daemonDown?: boolean; daemonHangs?: boolean }
++type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean; board?: boolean; memory?: string; daemonDown?: boolean; daemonHangs?: boolean; dashboardRefusals?: number }
 +function world(on: On, w: World = {}) {
 +  const ran: unknown[] = []
 +  const toasts: string[] = []
@@ -422,7 +437,8 @@ index 0000000..d40b05e
 +  on('turn.complete', () => ({ text: '' }))
 +  on('ui.toast', ($, e) => { toasts.push(e.text); return { value: undefined } })
 +  const daemon = { down: w.daemonDown ?? false }
-+  on('http.fetch', ($, e) => { fetched.push(e.url); if (w.daemonHangs) return new Promise<never>(() => {}); return daemon.down ? ({ deny: 'refused' } as never) : { value: { status: 200, ok: true, headers: {}, text: '{}' } } })
++  let refusals = w.dashboardRefusals ?? 0
++  on('http.fetch', ($, e) => { fetched.push(e.url); if (!e.url.endsWith('/health') && refusals-- > 0) return { deny: 'refused' } as never; if (w.daemonHangs) return new Promise<never>(() => {}); return daemon.down ? ({ deny: 'refused' } as never) : { value: { status: 200, ok: true, headers: {}, text: '{}' } } })
 +  on('clock.sleep', () => ({ value: undefined }))
 +  on('ui.render', () => ({ type: 'Text', props: {}, children: ['below'] }))
 +  return { ran, toasts, saved, files, fetched, daemon }
@@ -585,6 +601,29 @@ index 0000000..d40b05e
 +  expect(toasts).toEqual(['starting the memory dashboard…', 'starting the memory dashboard…', 'could not start the memory dashboard: uv: no such tool'])
 +  await ui.press({ key: 'details' })
 +  expect(await ui.find({ key: 'tile-memory' })).toBeUndefined()
++})
++// The panel hindsight-embed prints on stderr when its own 30 s wait for the dashboard runs out
++const TIMED_OUT = { ...PASS, exitCode: 1, stderr: '╭─ ✗ UI Failed (Timeout) (:29001) ─╮\n│                                  │\n│  UI failed to start (timeout)    │\n│                                  │\n│  See full log: /home/u/ui.log    │\n│                                  │\n╰──────────────────────────────────╯\n' }
++test('a start that times out while the dashboard is still installing waits for the page, then opens it', async ($, on) => {
++  const { toasts, fetched } = world(on, { memory: MEMORY, dashboardRefusals: 3 })
++  const argv: unknown[] = []
++  on('process.run', ($, e) => { argv.push(e.argv); return { value: argv.length === 1 ? TIMED_OUT : PASS } })
++  await start($)
++  const ui = await mount($)
++  await ui.press({ key: 'memory' })
++  expect(argv[1]).toEqual(['open', 'http://localhost:29001'])
++  expect(fetched.filter(u => u === 'http://127.0.0.1:29001').length).toBe(4)
++  expect(toasts).toEqual(['starting the memory dashboard…', 'the dashboard is still installing, waiting for it…'])
++})
++test('a start that times out and never answers toasts the reason without the panel borders', async ($, on) => {
++  const { toasts } = world(on, { memory: MEMORY, dashboardRefusals: Infinity })
++  const argv: unknown[] = []
++  on('process.run', ($, e) => { argv.push(e.argv); return { value: TIMED_OUT } })
++  await start($)
++  const ui = await mount($)
++  await ui.press({ key: 'memory' })
++  expect(argv.length).toBe(1)
++  expect(toasts.at(-1)).toBe('could not start the memory dashboard: ✗ UI Failed (Timeout) (:29001) UI failed to start (timeout) See full log: /home/u/ui.log')
 +})
 +test('the daemon probe is cached across draws and cleared when the button starts the daemon', async ($, on) => {
 +  const { fetched } = world(on, { memory: MEMORY })
