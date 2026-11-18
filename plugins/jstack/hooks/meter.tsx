@@ -129,12 +129,14 @@ async function memoryState($: EngineInterface, c: MemoryConfig | null): Promise<
   return (await daemonUp($, c.apiPort ?? DEFAULT_PORT)) ? 'on' : 'down'
 }
 const MEMORY_TONE: Partial<Record<MemoryState, 'success' | 'warning'>> = { on: 'success', down: 'warning' }
-// Any answer counts, the page redirects; 45 tries are about 90 s past the embed's own wait. Each try is
-// raced like the daemon probe, so a port that accepts but never answers cannot hold the button
+// The embed's own readiness test, a 200 from /api/health, so another process on the port is not taken for the dashboard.
+// 45 tries, 2 s apart, are about 90 s past the embed's wait; the one sleep paces a try and bounds it, as in the daemon
+// probe, so a port that accepts but never answers costs no more than one that refuses
 async function dashboardUp($: EngineInterface, port: number): Promise<boolean> {
   for (let i = 0; i < 45; i++) {
-    if (await Promise.race([$.http.fetch(`http://127.0.0.1:${port}`).then(() => true, () => false), $.clock.sleep(2000).then(() => false)])) return true
-    await $.clock.sleep(2000)
+    const pace = $.clock.sleep(2000)
+    if (await Promise.race([$.http.fetch(`http://127.0.0.1:${port}/api/health`).then(r => r.ok, () => false), pace.then(() => false)])) return true
+    await pace
   }
   return false
 }
@@ -160,23 +162,24 @@ async function openMemory($: EngineInterface, config: string): Promise<void> {
     const profile = c.daemonProfile || 'coding-agent'
     // The hook package's own rule for launching the embed (getEmbedCommand in its daemon starter)
     const embed = c.embedPackagePath ? ['uv', 'run', '--directory', c.embedPackagePath, 'hindsight-embed'] : ['uvx', `hindsight-embed@${c.embedVersion || 'latest'}`]
-    // Starts the daemon when it is down; a second start is a no-op
+    // Starts the daemon when it is down; a no-op once the dashboard answers
     const r = await $.process.run([...embed, '-p', profile, 'ui', 'start', '--hostname', '127.0.0.1'], { timeoutMs: 180000 })
-    // The embed records the dashboard's port per profile next to its logs, but only when it did the start itself; its default is the daemon's port plus 10000
+    // The embed records the dashboard's port per profile next to its logs, but only when its own start saw the page answer; its default is the daemon's port plus 10000
     const recorded = (await $.fs.read(`${await $.env.get('HOME')}/.hindsight/profiles/${profile}.ui.port`).catch(() => '')).trim()
     let port = /^\d+$/.test(recorded) ? Number(recorded) : (c.apiPort ?? DEFAULT_PORT) + 10000
     if (r.exitCode !== 0) {
-      // Rich draws the embed's errors as a panel after its progress frames: keep the panel, from its ✗ title, without the borders and the padding
-      const said = (r.stderr.trim() || r.stdout).replace(/[\u2500-\u257f]/g, ' ').replace(/\s+/g, ' ').trim().replace(/^.*(?=✗)/, '')
+      // Rich draws the embed's errors as a panel after its progress frames, the CLI's on stdout and the manager's on stderr:
+      // keep from the first ✗ title, without the borders and the padding
+      const said = `${r.stderr}\n${r.stdout}`.replace(/[\u2500-\u257f]/g, ' ').replace(/\s+/g, ' ').trim().replace(/^.*?(?=✗)/, '')
       // The embed waits 30 s for the page, then exits 1 and leaves npx running: a first download of the dashboard package outlasts that wait.
-      // Its title names the port it tried, which it has not recorded yet
+      // Its title names the port it tried, which a timed-out start never records
       const timedOut = /UI Failed \(Timeout\) \(:(\d+)\)/.exec(said)
       if (timedOut) {
         port = Number(timedOut[1])
-        $.ui.toast('the dashboard is still installing, waiting for it…')
+        $.ui.toast('the dashboard has not answered yet, waiting up to 90 s more…')
       }
       if (!timedOut || !(await dashboardUp($, port))) {
-        $.ui.toast(`could not start the memory dashboard: ${said.slice(-200)}`)
+        $.ui.toast(`could not start the memory dashboard: ${said.slice(-200) || `exit ${r.exitCode}, no output`}`)
         return
       }
     }

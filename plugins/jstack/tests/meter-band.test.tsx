@@ -10,7 +10,7 @@ const USAGE: SessionUsage = {
   rateLimits: [{ kind: 'five_hour', percentUsed: 12, resetsAt: '2026-10-22T15:40:00Z' }, { kind: 'seven_day', percentUsed: 60 }],
   cost: { usd: 0.42 },
 }
-type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean; board?: boolean; memory?: string; daemonDown?: boolean; daemonHangs?: boolean; dashboardRefusals?: number; dashboardHangs?: boolean }
+type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean; board?: boolean; memory?: string; daemonDown?: boolean; daemonHangs?: boolean; dashboardRefusals?: number; dashboardHangs?: boolean; dashboardOther?: boolean }
 function world(on: On, w: World = {}) {
   const ran: unknown[] = []
   const toasts: string[] = []
@@ -43,7 +43,7 @@ function world(on: On, w: World = {}) {
   on('ui.toast', ($, e) => { toasts.push(e.text); return { value: undefined } })
   const daemon = { down: w.daemonDown ?? false }
   let refusals = w.dashboardRefusals ?? 0
-  on('http.fetch', ($, e) => { fetched.push(e.url); if (!e.url.endsWith('/health')) { if (w.dashboardHangs) return new Promise<never>(() => {}); if (refusals-- > 0) return { deny: 'refused' } as never } if (w.daemonHangs) return new Promise<never>(() => {}); return daemon.down ? ({ deny: 'refused' } as never) : { value: { status: 200, ok: true, headers: {}, text: '{}' } } })
+  on('http.fetch', ($, e) => { fetched.push(e.url); if (e.url.endsWith('/api/health')) { if (w.dashboardHangs) return new Promise<never>(() => {}); if (refusals-- > 0) return { deny: 'refused' } as never; if (w.dashboardOther) return { value: { status: 404, ok: false, headers: {}, text: '' } } } if (w.daemonHangs) return new Promise<never>(() => {}); return daemon.down ? ({ deny: 'refused' } as never) : { value: { status: 200, ok: true, headers: {}, text: '{}' } } })
   on('clock.sleep', () => ({ value: undefined }))
   on('ui.render', () => ({ type: 'Text', props: {}, children: ['below'] }))
   return { ran, toasts, saved, files, fetched, daemon }
@@ -218,8 +218,8 @@ test('a start that times out while the dashboard is still installing waits for t
   const ui = await mount($)
   await ui.press({ key: 'memory' })
   expect(argv[1]).toEqual(['open', 'http://localhost:29002'])
-  expect(fetched.filter(u => u === 'http://127.0.0.1:29002').length).toBe(4)
-  expect(toasts).toEqual(['starting the memory dashboard…', 'the dashboard is still installing, waiting for it…'])
+  expect(fetched.filter(u => u === 'http://127.0.0.1:29002/api/health').length).toBe(4)
+  expect(toasts).toEqual(['starting the memory dashboard…', 'the dashboard has not answered yet, waiting up to 90 s more…'])
 })
 test('a start that times out and never answers toasts the failure panel alone, without its borders', async ($, on) => {
   const { toasts } = world(on, { memory: MEMORY, dashboardRefusals: Infinity })
@@ -238,8 +238,27 @@ test('a dashboard port that accepts but never answers does not hold the button',
   const ui = await mount($)
   await ui.press({ key: 'memory' })
   await ui.press({ key: 'memory' })
-  expect(toasts.filter(t => t === 'the memory dashboard is already starting')).toEqual([])
   expect(toasts.filter(t => t.startsWith('could not start the memory dashboard')).length).toBe(2)
+})
+test('another process answering on the dashboard port is not taken for the dashboard', async ($, on) => {
+  const { toasts } = world(on, { memory: MEMORY, dashboardOther: true })
+  const argv: unknown[] = []
+  on('process.run', ($, e) => { argv.push(e.argv); return { value: TIMED_OUT } })
+  await start($)
+  const ui = await mount($)
+  await ui.press({ key: 'memory' })
+  expect(argv.length).toBe(1)
+  expect(toasts.at(-1)).toBe('could not start the memory dashboard: ✗ UI Failed (Timeout) (:29002) UI failed to start (timeout) See full log: /home/u/ui.log')
+})
+test('a failed start toasts the panel the CLI prints on stdout past installer noise on stderr, and the exit code when it says nothing', async ($, on) => {
+  const { toasts } = world(on, { memory: MEMORY })
+  const results = [{ ...PASS, exitCode: 1, stderr: 'Installed 3 packages in 12ms\n', stdout: '╭─ ✗ Error ─╮\n│ Failed to start daemon (required for UI) │\n╰───────────╯\n' }, { ...PASS, exitCode: 137 }]
+  on('process.run', () => ({ value: results.shift()! }))
+  await start($)
+  const ui = await mount($)
+  await ui.press({ key: 'memory' })
+  await ui.press({ key: 'memory' })
+  expect(toasts.filter(t => t.startsWith('could not'))).toEqual(['could not start the memory dashboard: ✗ Error Failed to start daemon (required for UI)', 'could not start the memory dashboard: exit 137, no output'])
 })
 test('a failed start that is not the dashboard wait toasts at once, even when it says timeout', async ($, on) => {
   const { toasts, fetched } = world(on, { memory: MEMORY })
