@@ -10,7 +10,7 @@ const USAGE: SessionUsage = {
   rateLimits: [{ kind: 'five_hour', percentUsed: 12, resetsAt: '2026-10-22T15:40:00Z' }, { kind: 'seven_day', percentUsed: 60 }],
   cost: { usd: 0.42 },
 }
-type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean; board?: boolean; memory?: string; daemonDown?: boolean; daemonHangs?: boolean; dashboardRefusals?: number }
+type World = { commands?: string[]; usage?: SessionUsage; spawned?: { model: string; agentId: string }[]; hasPackage?: boolean; scripts?: string; details?: boolean; board?: boolean; memory?: string; daemonDown?: boolean; daemonHangs?: boolean; dashboardRefusals?: number; dashboardHangs?: boolean }
 function world(on: On, w: World = {}) {
   const ran: unknown[] = []
   const toasts: string[] = []
@@ -43,7 +43,7 @@ function world(on: On, w: World = {}) {
   on('ui.toast', ($, e) => { toasts.push(e.text); return { value: undefined } })
   const daemon = { down: w.daemonDown ?? false }
   let refusals = w.dashboardRefusals ?? 0
-  on('http.fetch', ($, e) => { fetched.push(e.url); if (!e.url.endsWith('/health') && refusals-- > 0) return { deny: 'refused' } as never; if (w.daemonHangs) return new Promise<never>(() => {}); return daemon.down ? ({ deny: 'refused' } as never) : { value: { status: 200, ok: true, headers: {}, text: '{}' } } })
+  on('http.fetch', ($, e) => { fetched.push(e.url); if (!e.url.endsWith('/health')) { if (w.dashboardHangs) return new Promise<never>(() => {}); if (refusals-- > 0) return { deny: 'refused' } as never } if (w.daemonHangs) return new Promise<never>(() => {}); return daemon.down ? ({ deny: 'refused' } as never) : { value: { status: 200, ok: true, headers: {}, text: '{}' } } })
   on('clock.sleep', () => ({ value: undefined }))
   on('ui.render', () => ({ type: 'Text', props: {}, children: ['below'] }))
   return { ran, toasts, saved, files, fetched, daemon }
@@ -207,20 +207,21 @@ test('Memory is its own button: it shows the state, starts the Hindsight dashboa
   await ui.press({ key: 'details' })
   expect(await ui.find({ key: 'tile-memory' })).toBeUndefined()
 })
-// The panel hindsight-embed prints on stderr when its own 30 s wait for the dashboard runs out
-const TIMED_OUT = { ...PASS, exitCode: 1, stderr: '╭─ ✗ UI Failed (Timeout) (:29001) ─╮\n│                                  │\n│  UI failed to start (timeout)    │\n│                                  │\n│  See full log: /home/u/ui.log    │\n│                                  │\n╰──────────────────────────────────╯\n' }
-test('a start that times out while the dashboard is still installing waits for the page, then opens it', async ($, on) => {
+// What hindsight-embed leaves on stderr when its own 30 s wait for the dashboard runs out: Rich's last progress frame, then the
+// failure panel. The port file is 29001; the panel names the port the embed tried
+const TIMED_OUT = { ...PASS, exitCode: 1, stderr: "╭─ Starting UI (coding-agent @ :29002) ─╮\n│  Starting UI for profile 'coding-agent'...  │\n│  ⏳ Waiting for UI... (29s elapsed)          │\n╰──────────────────────────────────╯\n╭─ ✗ UI Failed (Timeout) (:29002) ─╮\n│                                  │\n│  UI failed to start (timeout)    │\n│                                  │\n│  See full log: /home/u/ui.log    │\n│                                  │\n╰──────────────────────────────────╯\n" }
+test('a start that times out while the dashboard is still installing waits for the page on the port the embed tried, then opens it', async ($, on) => {
   const { toasts, fetched } = world(on, { memory: MEMORY, dashboardRefusals: 3 })
   const argv: unknown[] = []
   on('process.run', ($, e) => { argv.push(e.argv); return { value: argv.length === 1 ? TIMED_OUT : PASS } })
   await start($)
   const ui = await mount($)
   await ui.press({ key: 'memory' })
-  expect(argv[1]).toEqual(['open', 'http://localhost:29001'])
-  expect(fetched.filter(u => u === 'http://127.0.0.1:29001').length).toBe(4)
+  expect(argv[1]).toEqual(['open', 'http://localhost:29002'])
+  expect(fetched.filter(u => u === 'http://127.0.0.1:29002').length).toBe(4)
   expect(toasts).toEqual(['starting the memory dashboard…', 'the dashboard is still installing, waiting for it…'])
 })
-test('a start that times out and never answers toasts the reason without the panel borders', async ($, on) => {
+test('a start that times out and never answers toasts the failure panel alone, without its borders', async ($, on) => {
   const { toasts } = world(on, { memory: MEMORY, dashboardRefusals: Infinity })
   const argv: unknown[] = []
   on('process.run', ($, e) => { argv.push(e.argv); return { value: TIMED_OUT } })
@@ -228,7 +229,27 @@ test('a start that times out and never answers toasts the reason without the pan
   const ui = await mount($)
   await ui.press({ key: 'memory' })
   expect(argv.length).toBe(1)
-  expect(toasts.at(-1)).toBe('could not start the memory dashboard: ✗ UI Failed (Timeout) (:29001) UI failed to start (timeout) See full log: /home/u/ui.log')
+  expect(toasts.at(-1)).toBe('could not start the memory dashboard: ✗ UI Failed (Timeout) (:29002) UI failed to start (timeout) See full log: /home/u/ui.log')
+})
+test('a dashboard port that accepts but never answers does not hold the button', async ($, on) => {
+  const { toasts } = world(on, { memory: MEMORY, dashboardHangs: true })
+  on('process.run', () => ({ value: TIMED_OUT }))
+  await start($)
+  const ui = await mount($)
+  await ui.press({ key: 'memory' })
+  await ui.press({ key: 'memory' })
+  expect(toasts.filter(t => t === 'the memory dashboard is already starting')).toEqual([])
+  expect(toasts.filter(t => t.startsWith('could not start the memory dashboard')).length).toBe(2)
+})
+test('a failed start that is not the dashboard wait toasts at once, even when it says timeout', async ($, on) => {
+  const { toasts, fetched } = world(on, { memory: MEMORY })
+  on('process.run', () => ({ value: { ...PASS, exitCode: 1, stderr: '╭─ ✗ Daemon Failed (Timeout) (:9077) ─╮\n│  Daemon failed to start (timeout)  │\n╰────────────────────────────────────╯\n' } }))
+  await start($)
+  const ui = await mount($)
+  const probes = fetched.length
+  await ui.press({ key: 'memory' })
+  expect(fetched.length).toBe(probes)
+  expect(toasts).toEqual(['starting the memory dashboard…', 'could not start the memory dashboard: ✗ Daemon Failed (Timeout) (:9077) Daemon failed to start (timeout)'])
 })
 test('the daemon probe is cached across draws and cleared when the button starts the daemon', async ($, on) => {
   const { fetched } = world(on, { memory: MEMORY })
