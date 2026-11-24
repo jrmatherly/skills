@@ -12,6 +12,7 @@ Personal Agent Skills plus a Claude Code plugin marketplace (`jrmatherly-skills`
 | `plugins/jstack/` | Generated from pstack (cursor/plugins), at a pinned commit | The inputs in `jstack/`, then `scripts/sync-jstack` |
 | `jstack/` | The fork's inputs: pin, substitutions, patches, the merge helper, tests | Editing it (`.claude/rules/jstack-fork.md`) |
 | `plugins/resume/` | One-time fork, no upstream sync | Editing it, then `scripts/check-resume` |
+| `tracker-bots/` | Hand-written, for a project tracker's bots (README, "Tracker bot skills") | Editing it, then importing it again in the tracker |
 
 A hook refuses Edit and Write on the two generated trees. To take a new upstream release, use the `upstream-sync` skill.
 

@@ -1,6 +1,6 @@
 # skills
 
-Personal [Agent Skills](https://agentskills.io/) for coding agents (Claude Code, Codex, Amp, Cursor and others), installed with the [Skills CLI](https://github.com/vercel-labs/skills), plus a Claude Code plugin marketplace.
+Personal [Agent Skills](https://agentskills.io/) for coding agents (Claude Code, Codex, Amp, Cursor and others), installed with the [Skills CLI](https://github.com/vercel-labs/skills), plus a Claude Code plugin marketplace and skills for the AI bots of a project tracker.
 
 Companion to [jrmatherly/dotfiles](https://github.com/jrmatherly/dotfiles), whose setup installs both and whose `agents/instructions.md` refers to these skills.
 
@@ -66,6 +66,19 @@ They are a one-time fork of [ResumeSkills](https://github.com/Paramchoudhary/Res
 
 `scripts/check-resume` validates the plugin: frontmatter that parses as YAML with exactly `name`, `description` and `metadata`, links, every bundled file wired, sibling skill names (bold lowercase tokens are reserved for them) and `claude plugin validate`. Nothing runs it automatically, so run it after editing a skill. It needs `ruby` (the macOS system one is enough).
 
+## Tracker bot skills
+
+`tracker-bots/` holds skills for the AI bots of a self-hosted [It's a Plan](https://github.com/jrmatherly/itsaplan) project tracker. They are not for coding agents. The bots have only tracker tools, plus web search and page scraping for the research bot, and the skills name those tools.
+
+| Skill | Use it for |
+| --- | --- |
+| [`issue-triage`](tracker-bots/issue-triage/SKILL.md) | Choosing an issue's type, priority and labels, linking duplicates, and commenting on what is missing |
+| [`research-report`](tracker-bots/research-report/SKILL.md) | Answering an issue's research question from web sources, as a linked document with sources and a short comment |
+
+Import them in the tracker from `https://github.com/jrmatherly/skills/tree/main/tracker-bots` (Team settings, Skills, or the `create_agent_skill` MCP tool). The tracker lists at most 50 skills from one URL, and this repository holds more, so import from that folder and not from the repository root. The tracker pins each import to a commit. After a change merges, import the skill again.
+
+The Skills CLI's default search does not look in `tracker-bots/`, so `--list` leaves these out. `-s <name>` and `--full-depth` still find them. Do not install them into a coding agent.
+
 ## Install
 
 This repo is public: both installers clone it anonymously over HTTPS, no GitHub account or credential needed.
@@ -105,12 +118,12 @@ Contributing from a clone: run `git config core.hooksPath .githooks` once, so th
 
 ## Add a skill
 
-1. Create `skills/<name>/SKILL.md` (or run `npx skills init skills/<name>`).
+1. Create `skills/<name>/SKILL.md` (or run `npx skills init skills/<name>`). A skill for a tracker bot goes in `tracker-bots/<name>/SKILL.md`.
 2. Give it YAML frontmatter:
    - `name`: lowercase letters, numbers and single hyphens, max 64 characters, matching the folder name
    - `description`: what the skill does **and when to use it**, with the keywords an agent would match on (max 1024 characters)
 3. Keep `SKILL.md` under ~500 lines; move detail into `references/`, and put runnable helpers in `scripts/`, referenced with relative paths.
-4. Add it to the Skills table, commit, push, and run `npx skills update`.
+4. Add it to the Skills table, commit, push, and run `npx skills update`. For a tracker bot skill, add it to the Tracker bot skills table and import it again in the tracker.
 
 See the [Agent Skills specification](https://agentskills.io/specification) for the full format.
 
