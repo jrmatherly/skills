@@ -12,7 +12,7 @@ Personal Agent Skills plus a Claude Code plugin marketplace (`jrmatherly-skills`
 | `plugins/jstack/` | Generated from pstack (cursor/plugins), at a pinned commit | The inputs in `jstack/`, then `scripts/sync-jstack` |
 | `jstack/` | The fork's inputs: pin, substitutions, patches, the merge helper, tests | Editing it (`.claude/rules/jstack-fork.md`) |
 | `plugins/resume/` | One-time fork, no upstream sync | Editing it, then `scripts/check-resume` |
-| `tracker-bots/` | Hand-written, for a project tracker's bots (README, "Tracker bot skills") | Editing it, then importing it again in the tracker |
+| `tracker-bots/` | Hand-written, for a project tracker's bots (README, "Tracker bot skills") | Editing it. After the merge, update the copy in the tracker (README, "Tracker bot skills") |
 
 A hook refuses Edit and Write on the two generated trees. To take a new upstream release, use the `upstream-sync` skill.
 
@@ -23,6 +23,7 @@ A hook refuses Edit and Write on the two generated trees. To take a new upstream
 - `scripts/sync-jstack` regenerates jstack and runs `check-jstack`, upstream's Bun tests and two of the tests under `jstack/tests/`. It needs `bun`, `tsc` and the `claude` CLI, and the type-check needs the declarations `/plugin-authoring` writes (README, "Refresh the mod types").
 - `scripts/check-jstack --no-types plugins/jstack` checks the tree as committed, without the type-check. It still needs `claude`.
 - `scripts/check-resume` after any edit under `plugins/resume/`. It needs `ruby` and `claude`.
+- `tracker-bots/` has no check. Confirm by eye that the frontmatter parses and `name` matches the folder.
 - `shellcheck --severity=warning scripts/* .githooks/* .claude/hooks/* jstack/tests/*.sh`.
 - `bash jstack/tests/wordmerge.sh` and `bash jstack/tests/rebase-patches.sh` after touching `jstack/wordmerge.py` or `scripts/rebase-jstack-patches`. They need `python3`, and neither uses the network.
 - `bash jstack/tests/guard-generated.sh` after touching `.claude/hooks/guard-generated.sh`. It needs `jq`, as the hook does.

@@ -68,16 +68,25 @@ They are a one-time fork of [ResumeSkills](https://github.com/Paramchoudhary/Res
 
 ## Tracker bot skills
 
-`tracker-bots/` holds skills for the AI bots of a self-hosted [It's a Plan](https://github.com/jrmatherly/itsaplan) project tracker. They are not for coding agents. The bots have only tracker tools, plus web search and page scraping for the research bot, and the skills name those tools.
+`tracker-bots/` holds skills for the AI bots of a self-hosted [It's a Plan](https://github.com/jrmatherly/itsaplan) project tracker. They are not for coding agents. The bots have only tracker tools. The research bot also has web search and page scraping. The skills name the tracker tools they call.
 
 | Skill | Use it for |
 | --- | --- |
 | [`issue-triage`](tracker-bots/issue-triage/SKILL.md) | Choosing an issue's type, priority and labels, linking duplicates, and commenting on what is missing |
 | [`research-report`](tracker-bots/research-report/SKILL.md) | Answering an issue's research question from web sources, as a linked document with sources and a short comment |
 
-Import them in the tracker from `https://github.com/jrmatherly/skills/tree/main/tracker-bots` (Team settings, Skills, or the `create_agent_skill` MCP tool). The tracker lists at most 50 skills from one URL, and this repository holds more, so import from that folder and not from the repository root. The tracker pins each import to a commit. After a change merges, import the skill again.
+Import them in the tracker from `https://github.com/jrmatherly/skills/tree/main/tracker-bots`. The tracker lists only part of a large repository, and this repository is over its limit, so use that folder and not the repository root. In Team settings, Skills, paste the URL and pick the skills. Over MCP, call `discover_github_skills` with that URL, then `create_agent_skill` with `source: "github"` and each `url` it returns. Then enable each skill on its bot. An imported skill does nothing until an agent has it enabled.
 
-The Skills CLI's default search does not look in `tracker-bots/`, so `--list` leaves these out. `-s <name>` and `--full-depth` still find them. Do not install them into a coding agent.
+The tracker copies a skill's files at import and does not read GitHub again. A skill name is unique in a team, so a second import of the same name is refused. After a change merges to `main`, replace the text of the existing skill, in Team settings or with `update_agent_skill` and the new `markdown`. The agents keep it enabled. Deleting the skill and importing it again also works, but the delete turns it off on every agent, so enable it on each one again.
+
+Each skill assumes its bot has these in the tracker:
+
+- `issue-triage`: the actions that update issues, link issues, comment on issues and edit checklists, and a step limit of at least 20.
+- `research-report`: the document actions, the comment action, a web search tool and a page scraping tool, and a step limit of at least 40. Its search budget of about 20 calls assumes that limit.
+
+Keep each bot's own instructions short and free of rules its skill states, so the two cannot disagree. The headings table in `issue-triage` copies the projects' issue templates, which the bot cannot read. Change both together.
+
+The Skills CLI's default search does not list `tracker-bots/`. A search by name or at full depth can still find these skills. Do not install them into a coding agent.
 
 ## Install
 
@@ -122,8 +131,8 @@ Contributing from a clone: run `git config core.hooksPath .githooks` once, so th
 2. Give it YAML frontmatter:
    - `name`: lowercase letters, numbers and single hyphens, max 64 characters, matching the folder name
    - `description`: what the skill does **and when to use it**, with the keywords an agent would match on (max 1024 characters)
-3. Keep `SKILL.md` under ~500 lines; move detail into `references/`, and put runnable helpers in `scripts/`, referenced with relative paths.
-4. Add it to the Skills table, commit, push, and run `npx skills update`. For a tracker bot skill, add it to the Tracker bot skills table and import it again in the tracker.
+3. Keep `SKILL.md` under ~500 lines; move detail into `references/`, and put runnable helpers in `scripts/`, referenced with relative paths. A tracker bot skill can carry only Markdown reference files. The tracker imports no scripts.
+4. Add it to the Skills table, commit, push, and run `npx skills update`. For a tracker bot skill, add it to the Tracker bot skills table, then import it in the tracker or update the copy there ("Tracker bot skills" above).
 
 See the [Agent Skills specification](https://agentskills.io/specification) for the full format.
 
