@@ -12,7 +12,7 @@ index e4b7484..f9b16e6 100644
  `MUST KILL` is for code, not comments: mark the exact symbol whose behavior needs prose only because our own code is unclear, for a rename, extract, type, or rearchitecture that makes it obvious. My verdict ends there. I do not touch the code.
  
 diff --git a/skills/architect/SKILL.md b/skills/architect/SKILL.md
-index a8479b8..8daaf70 100644
+index 0c1a133..429bd17 100644
 --- a/skills/architect/SKILL.md
 +++ b/skills/architect/SKILL.md
 @@ -6,6 +6,8 @@ disable-model-invocation: true
@@ -21,11 +21,11 @@ index a8479b8..8daaf70 100644
  
 +jstack's skills are read, not invoked (they set `disable-model-invocation`): a skill named here lives at `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`.
 +
- Sketch types, function signatures, class shapes, and module boundaries with `not implemented` bodies and pseudocode. Synthesize across multiple model perspectives, then fill in code against the chosen sketch.
+ Before writing code, trace every system the change touches, then sketch two different shapes for it (types, signatures, module boundaries) and pick the one where each piece of state has one owner, each task has one way to do it, and callers need to know least. Redesign instead of patching if workarounds repeat.
  
- ## Start
+ For a large or contested design, run the **arena** skill instead of sketching alone.
 diff --git a/skills/arena/SKILL.md b/skills/arena/SKILL.md
-index 6072ee0..30eb564 100644
+index f209c28..615823e 100644
 --- a/skills/arena/SKILL.md
 +++ b/skills/arena/SKILL.md
 @@ -6,6 +6,8 @@ disable-model-invocation: true
@@ -50,19 +50,6 @@ index dbff38e..85673a0 100644
  Adversaries try to break a change or a design. A finding survives only when a run proves it. Report the findings. Do not apply fixes.
  
  ## Frame
-diff --git a/skills/reflect/SKILL.md b/skills/reflect/SKILL.md
-index de50f67..7977ae0 100644
---- a/skills/reflect/SKILL.md
-+++ b/skills/reflect/SKILL.md
-@@ -6,6 +6,8 @@ disable-model-invocation: true
- 
- # Reflect
- 
-+jstack's skills are read, not invoked (they set `disable-model-invocation`): a skill named here lives at `${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`.
-+
- Mine the current conversation for durable learnings, then route them into skill edits.
- 
- Invoke when the user says "reflect" or "/reflect". Skip when the conversation is trivial, off-topic, or already covered by an existing skill the parent followed correctly. One-offs are not learnings.
 diff --git a/skills/swarm/SKILL.md b/skills/swarm/SKILL.md
 index 860ae3b..9baffdd 100644
 --- a/skills/swarm/SKILL.md

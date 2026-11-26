@@ -37,6 +37,7 @@ Two trees here follow an upstream at a pinned commit. The owner chooses what to 
 6. Run `scripts/sync-jstack` again and review `git diff plugins/`. Grep the result for names upstream retired (a role line, a deleted file, a renamed skill). When upstream adds or removes a test file, update the `bun test` filter in `scripts/sync-jstack` and `.github/workflows/check.yml` together. A new Cursor-only term goes in `forbidden` in `scripts/check-jstack`.
 7. Update the README: the pinned commit and version under "Attribution and license", the dropped-skill list, the skill count if `ls plugins/jstack/skills | wc -l` changed, the `principle-*` count in the plugin table, and the patch list if a patch was added or deleted.
 8. Commit as `Sync jstack to pstack <version>`, with the decisions in the body. Open a PR whose table has one row per upstream change: the change, the decision, the result here. The owner merges.
+9. When the role list changed, say so at the top of the PR and to the owner. Two copies live outside this repository and need the same change once the PR merges: the owner's `~/.claude/rules/jstack-models.md`, and the dotfiles repository, which tracks that file, lists the roles in `settings/registry.toml` and asserts their count in `settings/tests/test_tool.py`. Its `docs/jstack.md` also states the skill, principle and playbook counts. Change neither from here without the owner's word.
 
 ### Resolving a stopped patch
 
@@ -57,6 +58,7 @@ Two trees here follow an upstream at a pinned commit. The owner chooses what to 
 | Cursor tool, path or mode names | Translate: a substitution row for a whole-word rename, `20-runtime` otherwise |
 | Model slugs (`claude-opus-5-5-xhigh`, a vendor's model) | Adapt to `<model> <effort>` with `opus`, `sonnet`, `haiku` or `fable`. The budget sets one effort for every role. A fast or other-vendor seat takes a cheaper Claude tier. `codex` only in read-only roles |
 | Which role gets which tier | Adopt the move in this repo's values: a role upstream moves up a tier moves up here |
+| A role added, renamed or retired | Adopt, and remove a retired role everywhere in this repo. The role list is also mirrored outside it (step 9) |
 | Fast slugs, per-vendor effort limits, slug-prefix families, migrations of old Cursor values | Drop |
 | Comment policy, skill invocation, safety flags, the mod and band | Keep this repo's patches. Carry upstream's intent into them when it changes the same sentence |
 

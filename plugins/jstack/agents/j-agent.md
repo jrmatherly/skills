@@ -2,6 +2,7 @@
 name: j-agent
 description: Delegate subagent for code-writing and helper tasks spawned during a `/j-mode` run. Use for delegates, not as the runner for `/j-mode` itself. Spawn a fresh `j-agent` for each new task, and resume one only in the strict cases that j-mode's Subagents section names. Reads the j-mode skill in full before any work, including its inline Principles index; substituting general-purpose skips that read and drifts.
 background: true
+model: opus
 ---
 
 # J subagent

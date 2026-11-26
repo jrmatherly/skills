@@ -32,7 +32,7 @@ jobs:
       - run: for t in wordmerge rebase-patches guard-generated; do bash "jstack/tests/$t.sh"; done
       - run: scripts/check-resume
       - run: scripts/check-jstack --no-types
-      - run: bun install --frozen-lockfile --production --ignore-scripts && bun test watch-pr check-plan.test.ts
+      - run: bun install --frozen-lockfile --production --ignore-scripts && bun test watch-pr
         working-directory: plugins/jstack/skills/j-mode/scripts
   gitleaks:
     runs-on: ubuntu-latest
