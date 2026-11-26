@@ -1,15 +1,15 @@
 diff --git a/agents/j-agent.md b/agents/j-agent.md
-index 3f12f62..ebe40fb 100644
+index 49e6834..4d472f1 100644
 --- a/agents/j-agent.md
 +++ b/agents/j-agent.md
-@@ -6,4 +6,4 @@ background: true
+@@ -7,4 +7,4 @@ model: opus
  
  # J subagent
  
 -You are operating as j-mode's full agent style. The chat that receives `/j-mode` owns the playbook, the todo list, and every Agent spawn. You are one of its delegates. Read the `j-mode` skill's `SKILL.md` in full before doing any work, including its inline Principles index. Use the absolute path your parent gave you; with no path, read `${CLAUDE_PLUGIN_ROOT}/skills/j-mode/SKILL.md`. Your skill catalog hides this skill, so a missing catalog entry does not mean jstack is absent. If the file does not exist, stop and tell your parent. Read a leaf `principle-*` skill (same `skills/` directory) whenever you apply that principle.
 +You are operating as j-mode's full agent style. The chat that receives `/j-mode` owns the playbook, the todo list, and every Agent spawn. You are one of its delegates. Read the `j-mode` skill's `SKILL.md` in full before doing any work, including its inline Principles index. Use the absolute path your parent gave you; with no path, read `${CLAUDE_PLUGIN_ROOT}/skills/j-mode/SKILL.md`. If the file does not exist, stop and tell your parent. Read a leaf `principle-*` skill (same `skills/` directory) whenever you apply that principle.
 diff --git a/skills/j-mode/SKILL.md b/skills/j-mode/SKILL.md
-index 8aa3989..5fef670 100644
+index 8ae80a4..f69f0b3 100644
 --- a/skills/j-mode/SKILL.md
 +++ b/skills/j-mode/SKILL.md
 @@ -1,7 +1,6 @@
@@ -20,7 +20,7 @@ index 8aa3989..5fef670 100644
  ---
  
  # J mode
-@@ -41,7 +40,7 @@ Remaining triggers:
+@@ -34,7 +33,7 @@ The remaining triggers live only here:
  
  Read the leaf skill in full for any principle you apply. Each entry names when it applies. Each leaf is the **principle-<title>** skill, with the title in kebab case, hyphens kept and other punctuation dropped, unless the entry gives its name.
  

@@ -117,7 +117,7 @@ npx skills add jrmatherly/skills -g -s coding-standards   # one skill
 npx skills add jrmatherly/skills --list                   # what's in the repo
 ```
 
-Avoid `--all`: the CLI also finds the plugins' skills under `plugins/` and this repo's own maintenance skill under `.claude/skills/`. jstack's 54 are written for Claude Code (its tools, `${CLAUDE_PLUGIN_ROOT}` paths), and with resume's 22 they would all land in every agent. The resume skills are plain Markdown, so another agent can take one by name (`-s tailor`). Keep skills current with `npx skills update`, and check what's installed with `npx skills ls -g`.
+Avoid `--all`: the CLI also finds the plugins' skills under `plugins/` and this repo's own maintenance skill under `.claude/skills/`. jstack's 55 are written for Claude Code (its tools, `${CLAUDE_PLUGIN_ROOT}` paths), and with resume's 22 they would all land in every agent. The resume skills are plain Markdown, so another agent can take one by name (`-s tailor`). Keep skills current with `npx skills update`, and check what's installed with `npx skills ls -g`.
 
 ## Checks
 
@@ -151,7 +151,7 @@ Four upstream skills are dropped: `make-bot-ui`, which drives Cursor's hosted ag
 The checks:
 
 - `scripts/check-jstack`: no upstream names or Cursor-only references left, skill names match their folders, links resolve, every `**name** skill` and `**name** principle skill` reference is a real skill folder (plus the separately installed `coding-standards`), no skill or agent grants itself `allowed-tools`, `hooks`, `mcpServers` or `permissionMode`, no symlinks, the upstream license notice is intact, and `claude plugin validate` passes
-- upstream's Bun tests (`bun test watch-pr check-plan.test.ts`) and `jstack/tests/worktree-audit.sh`
+- upstream's Bun tests (`bun test watch-pr`) and `jstack/tests/worktree-audit.sh`
 - `tsc --noEmit` over `hooks/`, `types/` and `tests/` against the engine's own declarations (see Refresh the mod types), then `claude plugin test` on a copy that holds only the mod (neither `claude plugin validate` nor `claude plugin test` type-checks, and the upstream `bun:test` files cannot load in the test sandbox)
 
 Sync runs upstream code (Bun's install and tests), so it's fenced in: the pin must be a full 40-character SHA (a short one can be shadowed by an upstream tag of the same name) and is checked after checkout, an upstream that ships `bunfig.toml`, `.npmrc` or symlinks is refused before Bun runs, and installs use `--production --ignore-scripts` (only `commander`, no install scripts). The plugin's own runtime install in `j-mode/scripts/bootstrap.ts` uses the same flags (`60-safety`).
@@ -198,4 +198,4 @@ After `claude update`, run `/plugin-authoring` again; until then the check runs 
 
 Everything here that is not listed below (the `coding-standards` skill, the scripts, the jstack patches, this README) is MIT-licensed, see [`LICENSE`](LICENSE). The resume plugin and supabase-prompts carry their own notices, named in their sections above.
 
-jstack is a fork of [pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan, MIT-licensed; the upstream notice is kept in [`plugins/jstack/LICENSE`](plugins/jstack/LICENSE). Pinned upstream: `cursor/plugins@bf0c7cd80abdbf7fe47b634978a7d1b4071f71a7` (pstack 0.15.42).
+jstack is a fork of [pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan, MIT-licensed; the upstream notice is kept in [`plugins/jstack/LICENSE`](plugins/jstack/LICENSE). Pinned upstream: `cursor/plugins@b1fbf4b60ac6813b4583ccc356850dafcf492665` (pstack 0.15.48).
