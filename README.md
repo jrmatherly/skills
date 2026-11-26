@@ -181,7 +181,7 @@ cp -R "$base" "${base%-base}-edit"
 
 A new file diffs as `a/jstack-edit/… b/jstack-edit/…`. The second `sed` rule rewrites that header so `git apply` creates the file. Without it `git apply` stops with `inconsistent new filename`.
 
-Keep one area per patch, so an upstream change breaks one patch, not all. The exception is `NN-reflect`: learnings from a `/jstack:reflect` pass land there as one patch per pass, never as edits under `plugins/jstack/` (the next sync would discard them). `scripts/sync-jstack --no-patches --out DIR` gives the tree before any patch. A new substitution row can shift text a patch is anchored to: rebuild each patch against the new table rather than editing hunks by hand.
+Keep one area per patch, so an upstream change breaks one patch, not all. The exception is `70-reflect`, which crosses areas: a learning from a `/jstack:reflect` pass is added to that one patch, never to a new patch per pass and never as an edit under `plugins/jstack/` (the next sync would discard it). `scripts/sync-jstack --no-patches --out DIR` gives the tree before any patch. A new substitution row can shift text a patch is anchored to: rebuild each patch against the new table rather than editing hunks by hand.
 
 ### Refresh the mod types
 

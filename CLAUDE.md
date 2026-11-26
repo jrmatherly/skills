@@ -30,7 +30,8 @@ A hook refuses Edit and Write on the two generated trees. To take a new upstream
 
 ## Landing a change
 
-- Work on a branch and open a pull request. The owner merges.
+- Work on a branch and open a pull request. Pushing a branch and opening its pull request need the owner's go-ahead, except for a small docs fix. Nothing merges without the owner's explicit word in the session ("merge it").
+- On that word: squash-merge, delete the branch, run the two update commands below for each plugin the change touched, and leave the Claude Code restart to the owner.
 - Commit subjects are short, imperative, sentence case, with no conventional-commit prefix.
 - Run `git config core.hooksPath .githooks` once per clone, so the gitleaks pre-push hook runs.
 - The plugins carry no `version`, so a merge to `main` is the release. An installed copy picks it up on `claude plugin marketplace update jrmatherly-skills` followed by `claude plugin update <plugin>@jrmatherly-skills` and a restart. The marketplace update alone leaves the plugin on its old commit.
