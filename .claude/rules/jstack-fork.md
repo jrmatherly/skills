@@ -27,6 +27,7 @@ Change an input instead, then run `scripts/sync-jstack` and review `git diff plu
 | `80-mod`, `90-band` | The hooks module and the band above the prompt |
 | `95-invocation` | `j-mode` stays on the Skill tool |
 | `97-context` | The Load context playbook, run when j-mode is loaded without a task |
+| `98-land` | The `land` skill: review a pull request, fix, wait for CI, hand over the merge, clean up |
 
 A new area gets a new numbered file. Keep one area per patch, so an upstream change breaks one patch.
 
