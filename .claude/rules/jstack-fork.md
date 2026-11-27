@@ -26,6 +26,7 @@ Change an input instead, then run `scripts/sync-jstack` and review `git diff plu
 | `70-reflect` | Learnings from `/jstack:reflect` passes (README, "Change or refresh a patch") |
 | `80-mod`, `90-band` | The hooks module and the band above the prompt |
 | `95-invocation` | `j-mode` stays on the Skill tool |
+| `97-context` | The Load context playbook, run when j-mode is loaded without a task |
 
 A new area gets a new numbered file. Keep one area per patch, so an upstream change breaks one patch.
 
