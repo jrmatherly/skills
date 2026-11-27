@@ -22,6 +22,11 @@ Companion to [jrmatherly/dotfiles](https://github.com/jrmatherly/dotfiles), whos
 
 jstack's skills set `disable-model-invocation`, so they stay out of Claude's automatic skill choice: run them as `/jstack:<name>`, and `j-mode` reads the others by path. `j-mode` itself is the exception (`95-invocation`): a session or subagent told to work in J mode invokes `/jstack:j-mode` through the Skill tool, which the flag would refuse. `/jstack:setup-jstack` picks the model per role (Claude tiers, plus a Codex reviewer when `codex` is installed). Its `j-mode` scripts need [Bun](https://bun.com).
 
+Two additions are this fork's own, not upstream's:
+
+- `/jstack:j-mode` with no task runs the Load context playbook (`97-context`) before its first reply: it checks the last handoff against the repository, reads the recorded decisions behind each open item, searches memory once per item, and names the tools the repository expects. It starts no work.
+- `/jstack:land <PR> [handoff] [no-merge] [then <instruction>]` (`98-land`) reviews a pull request, fixes the confirmed findings, waits for CI, hands you the merge command, and after you merge cleans up and returns to the default branch. It never merges.
+
 jstack also ships a mod (a hooks module) that draws a band above the prompt. The band shows:
 
 - the j-mode step row

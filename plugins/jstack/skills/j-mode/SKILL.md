@@ -11,7 +11,7 @@ description: Jason's agent style for concise, detailed responses, deliberate sub
 
 On every task, open the todolist first, as **Playbooks** describes.
 
-When this skill is loaded without a task, these triggers bind to the next one, and you run the **Load context** playbook before you reply. When it arrives, re-read this list and name the triggers that apply in your first reply.
+When this skill is loaded without a task, these triggers bind to the next one. In the main session, never as a subagent, run the **Load context** playbook before you reply. When the task arrives, re-read this list and name the triggers that apply in your first reply.
 
 The Principles section below grounds every trigger. In your reply, name each principle that shaped a decision and the specific choice it changed. Cite only principles whose leaf SKILL.md you read this session.
 
