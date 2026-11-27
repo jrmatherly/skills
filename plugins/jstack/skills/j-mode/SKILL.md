@@ -11,7 +11,7 @@ description: Jason's agent style for concise, detailed responses, deliberate sub
 
 On every task, open the todolist first, as **Playbooks** describes.
 
-When this skill is loaded without a task, these triggers bind to the next one. When it arrives, re-read this list and name the triggers that apply in your first reply.
+When this skill is loaded without a task, these triggers bind to the next one. In the main session, never as a subagent, run the **Load context** playbook before you reply. When the task arrives, re-read this list and name the triggers that apply in your first reply.
 
 The Principles section below grounds every trigger. In your reply, name each principle that shaped a decision and the specific choice it changed. Cite only principles whose leaf SKILL.md you read this session.
 
@@ -116,4 +116,4 @@ Keep a comment only for a non-obvious *why* the code can't show. Keep it concise
 
 Match the task to a playbook and open its steps at `playbooks/<title>.md`, with the title in kebab case. Copy its steps into the todolist tool first. When the `mcp__jstack__step` tool is present and you are the main session, not a subagent, mirror the list into it: `op: "set"` with the playbook name and the step texts as you open the todolist, `done` or `skip` with the step number as you go, and `set` again after `/clear` or `/branch`, which empty the band. The todolist stays the record. The band also shows the context fill, cost, tokens, quota and the running subagents, so don't restate those figures in the reply. Large, cross-cutting, or unattended work, or a task no playbook fits, routes to the **figure-it-out** skill.
 
-Investigation, Bug fix, Perf issue, Hillclimb, Runtime forensics, Trace forensics, Feature, Refactoring, Prototype, Visual parity, Authoring a skill, Eval, Babysit, Shipping, Autonomous run, Autopilot-full, Autopilot-stack, Session pickup, Pause safely, Multi-phase plan, Worktree cleanup, Opening a PR.
+Investigation, Bug fix, Perf issue, Hillclimb, Runtime forensics, Trace forensics, Feature, Refactoring, Prototype, Visual parity, Authoring a skill, Eval, Babysit, Shipping, Autonomous run, Autopilot-full, Autopilot-stack, Load context, Session pickup, Pause safely, Multi-phase plan, Worktree cleanup, Opening a PR.

@@ -22,6 +22,11 @@ Companion to [jrmatherly/dotfiles](https://github.com/jrmatherly/dotfiles), whos
 
 jstack's skills set `disable-model-invocation`, so they stay out of Claude's automatic skill choice: run them as `/jstack:<name>`, and `j-mode` reads the others by path. `j-mode` itself is the exception (`95-invocation`): a session or subagent told to work in J mode invokes `/jstack:j-mode` through the Skill tool, which the flag would refuse. `/jstack:setup-jstack` picks the model per role (Claude tiers, plus a Codex reviewer when `codex` is installed). Its `j-mode` scripts need [Bun](https://bun.com).
 
+Two additions are this fork's own, not upstream's:
+
+- `/jstack:j-mode` with no task runs the Load context playbook (`97-context`) before its first reply: it checks the last handoff against the repository, reads the recorded decisions behind each open item, searches memory once per item, and names the tools the repository expects. It starts no work.
+- `/jstack:land <PR> [handoff] [no-merge] [then <instruction>]` (`98-land`) reviews a pull request, fixes the confirmed findings, waits for CI, hands you the merge command, and after you merge cleans up and returns to the default branch. It never merges.
+
 jstack also ships a mod (a hooks module) that draws a band above the prompt. The band shows:
 
 - the j-mode step row
@@ -117,7 +122,7 @@ npx skills add jrmatherly/skills -g -s coding-standards   # one skill
 npx skills add jrmatherly/skills --list                   # what's in the repo
 ```
 
-Avoid `--all`: the CLI also finds the plugins' skills under `plugins/` and this repo's own maintenance skill under `.claude/skills/`. jstack's 55 are written for Claude Code (its tools, `${CLAUDE_PLUGIN_ROOT}` paths), and with resume's 22 they would all land in every agent. The resume skills are plain Markdown, so another agent can take one by name (`-s tailor`). Keep skills current with `npx skills update`, and check what's installed with `npx skills ls -g`.
+Avoid `--all`: the CLI also finds the plugins' skills under `plugins/` and this repo's own maintenance skill under `.claude/skills/`. jstack's 56 are written for Claude Code (its tools, `${CLAUDE_PLUGIN_ROOT}` paths), and with resume's 22 they would all land in every agent. The resume skills are plain Markdown, so another agent can take one by name (`-s tailor`). Keep skills current with `npx skills update`, and check what's installed with `npx skills ls -g`.
 
 ## Checks
 
@@ -144,7 +149,7 @@ To update: read `git log -p <old>..<new> -- examples/prompts` upstream, set `com
 
 ## jstack: generated from upstream
 
-`plugins/jstack/` is generated, never edited by hand. `scripts/sync-jstack` fetches upstream at the commit pinned in `jstack/upstream`, keeps its skills, agents and `LICENSE`, applies `jstack/substitutions.tsv` (whole-word renames such as `poteto-mode` to `j-mode` and Cursor to Claude Code tool names), then `jstack/patches/*.patch` in order (`10-router`, `20-runtime`, `30-models`, `40-comments`, `50-skill-refs`, `60-safety`, `70-reflect`, `80-mod`, `90-band`, `95-invocation`). It keeps upstream's `bun.lock` (the relock step only confirms it still matches `package.json`), and only replaces `plugins/jstack/` when the checks below pass.
+`plugins/jstack/` is generated, never edited by hand. `scripts/sync-jstack` fetches upstream at the commit pinned in `jstack/upstream`, keeps its skills, agents and `LICENSE`, applies `jstack/substitutions.tsv` (whole-word renames such as `poteto-mode` to `j-mode` and Cursor to Claude Code tool names), then `jstack/patches/*.patch` in order (`10-router`, `20-runtime`, `30-models`, `40-comments`, `50-skill-refs`, `60-safety`, `70-reflect`, `80-mod`, `90-band`, `95-invocation`, `97-context`, `98-land`). It keeps upstream's `bun.lock` (the relock step only confirms it still matches `package.json`), and only replaces `plugins/jstack/` when the checks below pass.
 
 Four upstream skills are dropped: `make-bot-ui`, which drives Cursor's hosted agents; `poteto-help`, which describes Cursor Custom Modes and links docs the sync never copies; `ketchup-video`, which needs a video renderer; and `statechart`, which installs npm packages with unpinned transitive dependencies plus TLC and Java, about 305 MB, on first use.
 
